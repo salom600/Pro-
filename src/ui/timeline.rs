@@ -114,7 +114,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                         egui::pos2(x + 4.0, ruler_rect.top() + 4.0),
                         egui::Align2::LEFT_TOP,
                         label,
-                        9.0,
+                        egui::FontId::proportional(9.0),
                         theme::TEXT_TERTIARY,
                     );
                     t += interval;
@@ -155,7 +155,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                         header_rect.left_top() + egui::vec2(10.0, 8.0),
                         egui::Align2::LEFT_TOP,
                         &track.name,
-                        12.0,
+                        egui::FontId::proportional(12.0),
                         theme::TEXT_PRIMARY,
                     );
                     // Mute/Solo/Lock indicators
@@ -164,7 +164,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                             header_rect.left_top() + egui::vec2(10.0, 26.0),
                             egui::Align2::LEFT_TOP,
                             "L",
-                            9.0,
+                            egui::FontId::proportional(9.0),
                             theme::ACCENT_ROSE,
                         );
                     }
@@ -173,7 +173,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                             header_rect.left_top() + egui::vec2(22.0, 26.0),
                             egui::Align2::LEFT_TOP,
                             "M",
-                            9.0,
+                            egui::FontId::proportional(9.0),
                             theme::ACCENT_AMBER,
                         );
                     }
@@ -247,7 +247,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                             clip_rect.left_top() + egui::vec2(6.0, 4.0),
                             egui::Align2::LEFT_TOP,
                             &clip.name,
-                            10.0,
+                            egui::FontId::proportional(10.0),
                             egui::Color32::WHITE,
                         );
 

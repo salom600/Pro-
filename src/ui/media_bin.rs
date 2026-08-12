@@ -115,7 +115,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                                         .pixels()
                                         .map(|p| egui::Color32::from_rgba_premultiplied(p.0[0], p.0[1], p.0[2], p.0[3]))
                                         .collect();
-                                    let texture_id = ui.ctx().load_texture(
+                                    let texture_handle = ui.ctx().load_texture(
                                         format!("thumb-{}", asset.id),
                                         egui::ColorImage {
                                             size: [w as usize, h as usize],
@@ -124,7 +124,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                                         egui::TextureOptions::LINEAR,
                                     );
                                     ui.painter().image(
-                                        texture_id,
+                                        texture_handle.id(),
                                         thumb_rect,
                                         egui::Rect::from_min_max(
                                             egui::pos2(0.0, 0.0),
@@ -146,7 +146,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                                 thumb_rect.left_top() + egui::vec2(4.0, 4.0),
                                 egui::Align2::LEFT_TOP,
                                 icon,
-                                9.0,
+                                egui::FontId::proportional(9.0),
                                 egui::Color32::WHITE,
                             );
 

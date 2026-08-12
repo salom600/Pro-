@@ -137,61 +137,64 @@ impl ProApp {
     }
 
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
-        // Allow text inputs to capture these keys.
         if ctx.wants_keyboard_input() {
             return;
         }
 
-        ctx.input(|i| {
-            let mut e = self.editor.write();
-            let ctrl = i.modifiers.ctrl || i.modifiers.command;
+        // Snapshot all inputs first so we don't hold any borrow on `self`.
+        let (tool_change, toggle_play, skip_left, skip_right, split_now, delete_selected) =
+            ctx.input(|i| {
+                let ctrl = i.modifiers.ctrl || i.modifiers.command;
+                let tool = if !ctrl {
+                    if i.key_pressed(egui::Key::V) {
+                        Some(crate::state::editor::Tool::Select)
+                    } else if i.key_pressed(egui::Key::C) {
+                        Some(crate::state::editor::Tool::Razor)
+                    } else if i.key_pressed(egui::Key::Y) {
+                        Some(crate::state::editor::Tool::Slip)
+                    } else if i.key_pressed(egui::Key::B) {
+                        Some(crate::state::editor::Tool::Ripple)
+                    } else if i.key_pressed(egui::Key::H) {
+                        Some(crate::state::editor::Tool::Hand)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                (
+                    tool,
+                    i.key_pressed(egui::Key::Space),
+                    i.key_pressed(egui::Key::ArrowLeft),
+                    i.key_pressed(egui::Key::ArrowRight),
+                    !ctrl && i.key_pressed(egui::Key::S),
+                    i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace),
+                )
+            });
 
-            // Tool shortcuts
-            if !ctrl {
-                if i.key_pressed(egui::Key::V) {
-                    e.active_tool = crate::state::editor::Tool::Select;
-                }
-                if i.key_pressed(egui::Key::C) {
-                    e.active_tool = crate::state::editor::Tool::Razor;
-                }
-                if i.key_pressed(egui::Key::Y) {
-                    e.active_tool = crate::state::editor::Tool::Slip;
-                }
-                if i.key_pressed(egui::Key::B) {
-                    e.active_tool = crate::state::editor::Tool::Ripple;
-                }
-                if i.key_pressed(egui::Key::H) {
-                    e.active_tool = crate::state::editor::Tool::Hand;
-                }
+        // Apply tool change
+        if let Some(tool) = tool_change {
+            self.editor.write().active_tool = tool;
+        }
+        if toggle_play {
+            self.editor.write().toggle_play();
+        }
+        if skip_left {
+            self.editor.write().skip(-1.0);
+        }
+        if skip_right {
+            self.editor.write().skip(1.0);
+        }
+        if split_now {
+            let playhead = self.editor.read().timeline.playhead;
+            self.split_at_playhead(playhead);
+        }
+        if delete_selected {
+            let id = self.editor.read().selected_clip_id.clone();
+            if let Some(id) = id {
+                self.remove_clip(&id);
             }
-
-            // Transport
-            if i.key_pressed(egui::Key::Space) {
-                e.toggle_play();
-            }
-            if i.key_pressed(egui::Key::ArrowLeft) {
-                e.skip(-1.0);
-            }
-            if i.key_pressed(egui::Key::ArrowRight) {
-                e.skip(1.0);
-            }
-
-            // Split at playhead
-            if !ctrl && i.key_pressed(egui::Key::S) {
-                let playhead = e.timeline.playhead;
-                drop(e);
-                self.split_at_playhead(playhead);
-            }
-
-            // Delete selected clip
-            if i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace) {
-                let selected = e.selected_clip_id.clone();
-                if let Some(id) = selected {
-                    drop(e);
-                    self.remove_clip(&id);
-                }
-            }
-        });
+        }
     }
 
     // ---- Edit operations (mutate shared state) ----

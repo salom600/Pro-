@@ -6,11 +6,22 @@ use crate::app::ProApp;
 use crate::media::export_presets;
 use crate::theme;
 
+// Per-dialog transient state. Held in thread-local to avoid borrow-checker
+// tangles with `ProApp`. This is fine for a single-window desktop app.
+thread_local! {
+    static PRESET_ID: std::cell::RefCell<String> = std::cell::RefCell::new("youtube-1080p".to_string());
+    static OUTPUT_PATH: std::cell::RefCell<String> = std::cell::RefCell::new(String::new());
+    static EXPORT_ERROR: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
+    static EXPORT_RESULT: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
+}
+
 pub fn render(ctx: &egui::Context, app: &mut ProApp) {
     let mut open = app.editor.read().export_dialog_open;
     if !open {
         return;
     }
+
+    let mut should_close = false;
 
     egui::Window::new("Export")
         .open(&mut open)
@@ -29,25 +40,8 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
 
             let presets = export_presets::all();
 
-            // Static-ish state stored in the editor (cheap hack for the
-            // foundation release — full state machine lands later).
-            static mut PRESET_ID: Option<String> = None;
-            static mut OUTPUT_PATH: Option<String> = None;
-            static mut EXPORTING: bool = false;
-            static mut EXPORT_RESULT: Option<String> = None;
-            static mut EXPORT_ERROR: Option<String> = None;
-
-            let preset_id = unsafe {
-                if PRESET_ID.is_none() {
-                    PRESET_ID = Some("youtube-1080p".to_string());
-                }
-                PRESET_ID.clone().unwrap()
-            };
-            let output_path = unsafe { OUTPUT_PATH.clone() };
-            let exporting = unsafe { EXPORTING };
-            let result_msg = unsafe { EXPORT_RESULT.clone() };
-            let error_msg = unsafe { EXPORT_ERROR.clone() };
-
+            // Check for a result message (export completed).
+            let result_msg = EXPORT_RESULT.with(|r| r.borrow().clone());
             if let Some(msg) = &result_msg {
                 ui.vertical_centered(|ui| {
                     ui.add_space(20.0);
@@ -72,13 +66,10 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                     );
                     ui.add_space(16.0);
                     if ui.button("Done").clicked() {
-                        unsafe {
-                            EXPORT_RESULT = None;
-                        }
-                        open = false;
+                        EXPORT_RESULT.with(|r| *r.borrow_mut() = None);
+                        should_close = true;
                     }
                 });
-                app.editor.write().export_dialog_open = open;
                 return;
             }
 
@@ -90,23 +81,24 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
             );
             ui.add_space(4.0);
 
+            let current_preset_id = PRESET_ID.with(|p| p.borrow().clone());
+
             egui::Grid::new("preset-grid")
                 .num_columns(2)
                 .spacing([8.0, 6.0])
                 .show(ui, |ui| {
                     for preset in &presets {
-                        let selected = preset.id == preset_id;
+                        let selected = preset.id == current_preset_id;
                         let frame = if selected {
                             egui::Frame::group(ui.style())
-                                .fill(egui::Color32::from_rgba_premultiplied(
-                                    0x63, 0x66, 0xf1, 30,
-                                ))
+                                .fill(egui::Color32::from_rgba_premultiplied(0x63, 0x66, 0xf1, 30))
                                 .stroke(egui::Stroke::new(1.5, theme::ACCENT_INDIGO))
                         } else {
                             egui::Frame::group(ui.style())
                                 .fill(theme::BG_ELEVATED)
                                 .stroke(egui::Stroke::new(1.0, theme::BORDER_SUBTLE))
                         };
+                        let id = preset.id.clone();
                         let resp = frame.show(ui, |ui| {
                             ui.set_min_width(220.0);
                             ui.vertical(|ui| {
@@ -128,7 +120,7 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                             });
                         });
                         if resp.response.clicked() {
-                            unsafe { PRESET_ID = Some(preset.id.clone()); }
+                            PRESET_ID.with(|p| *p.borrow_mut() = id);
                         }
                         ui.end_row();
                     }
@@ -139,7 +131,7 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
             ui.add_space(4.0);
 
             // Preset details
-            if let Some(p) = export_presets::find(&preset_id) {
+            if let Some(p) = export_presets::find(&current_preset_id) {
                 egui::Grid::new("preset-detail")
                     .num_columns(2)
                     .striped(true)
@@ -176,34 +168,33 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                     .strong(),
             );
             ui.add_space(4.0);
+
+            let mut path_str = OUTPUT_PATH.with(|p| p.borrow().clone());
             ui.horizontal(|ui| {
-                let mut path_str = output_path.clone().unwrap_or_default();
                 ui.add(
                     egui::TextEdit::singleline(&mut path_str)
                         .hint_text("Choose where to save…")
                         .desired_width(380.0),
                 );
-                unsafe { OUTPUT_PATH = Some(path_str); }
                 if ui.button("Browse").clicked() {
-                    let preset = export_presets::find(&preset_id);
-                    let ext = preset.map(|p| p.container.as_str()).unwrap_or("mp4");
+                    let preset_id = PRESET_ID.with(|p| p.borrow().clone());
+                    let ext = export_presets::find(&preset_id)
+                        .map(|p| p.container.clone())
+                        .unwrap_or_else(|| "mp4".to_string());
                     if let Some(path) = rfd::FileDialog::new()
-                        .add_filter(ext.to_uppercase(), &[ext])
+                        .add_filter(ext.to_uppercase(), &[&ext])
                         .set_file_name("untitled")
                         .save_file()
                     {
-                        unsafe { OUTPUT_PATH = Some(path.to_string_lossy().to_string()); }
+                        path_str = path.to_string_lossy().to_string();
                     }
                 }
             });
+            OUTPUT_PATH.with(|p| *p.borrow_mut() = path_str);
 
+            let error_msg = EXPORT_ERROR.with(|e| e.borrow().clone());
             if let Some(err) = &error_msg {
                 ui.add_space(8.0);
-                ui.painter().rect_filled(
-                    ui.available_rect_before_wrap(),
-                    4.0,
-                    egui::Color32::from_rgba_premultiplied(0xf4, 0x3f, 0x5e, 30),
-                );
                 ui.label(
                     egui::RichText::new(err)
                         .color(theme::ACCENT_ROSE)
@@ -217,41 +208,25 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
 
             ui.horizontal(|ui| {
                 if ui.button("Cancel").clicked() {
-                    unsafe {
-                        EXPORT_ERROR = None;
-                    }
-                    open = false;
+                    EXPORT_ERROR.with(|e| *e.borrow_mut() = None);
+                    should_close = true;
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let label = if exporting { "Exporting…" } else { "Start Export" };
-                    let btn = egui::Button::new(label);
-                    let btn = if exporting { btn } else { btn.fill(theme::ACCENT_INDIGO) };
-                    if ui.add(btn).clicked() && !exporting {
-                        let path = unsafe { OUTPUT_PATH.clone() };
-                        let preset = preset_id.clone();
-                        unsafe {
-                            EXPORTING = true;
-                            EXPORT_ERROR = None;
-                        }
-                        match &path {
-                            Some(p) if !p.is_empty() => {
-                                match app.export_project(p, &preset) {
-                                    Ok(_) => {
-                                        unsafe {
-                                            EXPORT_RESULT = Some(p.clone());
-                                            EXPORTING = false;
-                                        }
-                                    }
-                                    Err(e) => unsafe {
-                                        EXPORT_ERROR = Some(e);
-                                        EXPORTING = false;
-                                    },
+                    if ui.add(egui::Button::new("Start Export").fill(theme::ACCENT_INDIGO)).clicked() {
+                        let path = OUTPUT_PATH.with(|p| p.borrow().clone());
+                        let preset_id = PRESET_ID.with(|p| p.borrow().clone());
+                        EXPORT_ERROR.with(|e| *e.borrow_mut() = None);
+                        if path.is_empty() {
+                            EXPORT_ERROR.with(|e| *e.borrow_mut() = Some("Please choose an output path.".to_string()));
+                        } else {
+                            match app.export_project(&path, &preset_id) {
+                                Ok(_) => {
+                                    EXPORT_RESULT.with(|r| *r.borrow_mut() = Some(path.clone()));
+                                }
+                                Err(e) => {
+                                    EXPORT_ERROR.with(|err| *err.borrow_mut() = Some(e));
                                 }
                             }
-                            _ => unsafe {
-                                EXPORT_ERROR = Some("Please choose an output path.".to_string());
-                                EXPORTING = false;
-                            },
                         }
                     }
                 });
@@ -267,5 +242,8 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
             );
         });
 
+    if should_close {
+        open = false;
+    }
     app.editor.write().export_dialog_open = open;
 }

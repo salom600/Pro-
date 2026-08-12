@@ -112,7 +112,7 @@ fn monitor_panel(
                     .pixels()
                     .map(|p| egui::Color32::from_rgba_premultiplied(p.0[0], p.0[1], p.0[2], p.0[3]))
                     .collect();
-                let texture_id = ui.ctx().load_texture(
+                let texture_handle = ui.ctx().load_texture(
                     format!("monitor-{}-{}", label, asset.id),
                     egui::ColorImage {
                         size: [w as usize, h as usize],
@@ -133,7 +133,7 @@ fn monitor_panel(
                     egui::Vec2::new(draw_w, draw_h),
                 );
                 ui.painter().image(
-                    texture_id,
+                    texture_handle.id(),
                     draw_rect,
                     egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
                     egui::Color32::WHITE,
@@ -176,14 +176,14 @@ fn draw_empty(ui: &mut egui::Ui, rect: egui::Rect, hint: &str) {
         rect.center(),
         egui::Align2::CENTER_CENTER,
         "📺",
-        32.0,
+        egui::FontId::proportional(32.0),
         egui::Color32::from_white_alpha(60),
     );
     painter.text(
         rect.center() + egui::vec2(0.0, 30.0),
         egui::Align2::CENTER_CENTER,
         hint,
-        11.0,
+        egui::FontId::proportional(11.0),
         theme::TEXT_TERTIARY,
     );
 }
