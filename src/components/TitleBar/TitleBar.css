@@ -1,0 +1,107 @@
+.titlebar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--titlebar-h);
+  background: var(--bg-deepest);
+  border-bottom: 1px solid var(--border-subtle);
+  padding: 0 12px;
+  gap: 12px;
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+.titlebar-left,
+.titlebar-center,
+.titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.titlebar-center {
+  gap: 4px;
+}
+
+.titlebar-left {
+  flex: 1;
+  min-width: 0;
+}
+
+.titlebar-right {
+  flex: 1;
+  justify-content: flex-end;
+}
+
+.app-logo {
+  display: flex;
+  align-items: center;
+}
+
+.app-name {
+  font-weight: 700;
+  font-size: var(--font-size-md);
+  letter-spacing: 0.02em;
+  background: linear-gradient(135deg, var(--accent-indigo), var(--accent-violet));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.title-sep {
+  color: var(--text-tertiary);
+}
+
+.project-name {
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 240px;
+}
+
+.title-modified {
+  color: var(--text-tertiary);
+  font-size: var(--font-size-xs);
+}
+
+.tb-menu-btn {
+  padding: 4px 10px;
+  font-size: var(--font-size-sm);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: all 0.15s ease;
+
+  &:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  &.primary {
+    background: var(--accent-indigo);
+    color: white;
+    &:hover {
+      background: var(--accent-violet);
+    }
+  }
+}
+
+.platform-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-transform: capitalize;
+}
+
+.version-info {
+  font-family: var(--font-mono);
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  padding: 2px 6px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+}

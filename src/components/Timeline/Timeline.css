@@ -1,0 +1,246 @@
+.timeline {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.timeline-info {
+  display: flex;
+  gap: 6px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--font-mono);
+}
+
+.timeline-body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.track-headers {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border-subtle);
+  overflow: hidden;
+}
+
+.ruler-spacer {
+  height: var(--ruler-h);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-deepest);
+}
+
+.track-header {
+  height: var(--track-h);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border-subtle);
+
+  &.video .track-name {
+    color: var(--accent-indigo);
+  }
+  &.audio .track-name {
+    color: var(--accent-cyan);
+  }
+}
+
+.track-name {
+  font-weight: 600;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+}
+
+.track-controls {
+  display: flex;
+  gap: 2px;
+}
+
+.track-btn {
+  width: 18px;
+  height: 18px;
+  font-size: var(--font-size-xs);
+  border-radius: 3px;
+  color: var(--text-tertiary);
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover:not(:disabled) {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+.timeline-scroll {
+  overflow: auto;
+  min-height: 0;
+  position: relative;
+}
+
+.ruler {
+  height: var(--ruler-h);
+  position: relative;
+  background: var(--bg-deepest);
+  border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer;
+}
+
+.ruler-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px solid var(--border-subtle);
+}
+
+.ruler-label {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  font-size: var(--font-size-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+}
+
+.tracks-area {
+  position: relative;
+}
+
+.track-lane {
+  height: var(--track-h);
+  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+  background: var(--bg-base);
+
+  &.video {
+    background: linear-gradient(to bottom, rgba(99, 102, 241, 0.04), transparent);
+  }
+  &.audio {
+    background: linear-gradient(to bottom, rgba(8, 145, 178, 0.04), transparent);
+  }
+
+  &.razor-mode {
+    cursor: crosshair;
+  }
+}
+
+.clip {
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  cursor: grab;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-strong);
+  transition: box-shadow 0.1s ease, transform 0.05s ease;
+
+  &:hover {
+    border-color: var(--accent-indigo);
+  }
+
+  &.selected {
+    border-color: var(--accent-indigo);
+    box-shadow: 0 0 0 1px var(--accent-indigo), 0 0 10px rgba(99, 102, 241, 0.5);
+    z-index: 2;
+  }
+
+  &.video {
+    background: linear-gradient(135deg, #4f46e5, #6366f1);
+    color: white;
+  }
+  &.audio {
+    background: linear-gradient(135deg, #0891b2, #06b6d4);
+    color: white;
+  }
+  &.image {
+    background: linear-gradient(135deg, #d97706, #f59e0b);
+    color: white;
+  }
+  &.text {
+    background: linear-gradient(135deg, #be185d, #ec4899);
+    color: white;
+  }
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.clip-label {
+  padding: 3px 8px;
+  font-size: var(--font-size-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex-shrink: 0;
+}
+
+.clip-waveform {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 0 4px;
+  opacity: 0.5;
+}
+
+.wave-bar {
+  flex: 1;
+  background: white;
+  border-radius: 1px;
+  margin: 0 0.5px;
+  min-width: 1px;
+}
+
+.clip-effects {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+}
+
+.clip-fx-dot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--accent-amber);
+  box-shadow: 0 0 3px var(--accent-amber);
+}
+
+.playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-rose);
+  pointer-events: none;
+  z-index: 10;
+  box-shadow: 0 0 6px rgba(244, 63, 94, 0.6);
+}
+
+.playhead-handle {
+  position: absolute;
+  top: -2px;
+  left: -5px;
+  width: 12px;
+  height: 12px;
+  background: var(--accent-rose);
+  border-radius: 2px;
+  transform: rotate(45deg);
+}

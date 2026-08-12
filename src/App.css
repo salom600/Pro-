@@ -1,0 +1,49 @@
+.app-shell {
+  display: grid;
+  grid-template-rows: var(--titlebar-h) var(--toolbar-h) 1fr;
+  height: 100vh;
+  background: var(--bg-base);
+}
+
+.main-area {
+  display: grid;
+  grid-template-columns: 280px 1fr 320px;
+  gap: 1px;
+  background: var(--border-subtle);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.center-area {
+  display: grid;
+  grid-template-rows: var(--monitor-h) 1fr;
+  gap: 1px;
+  background: var(--border-subtle);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.right-panel {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 1px;
+  background: var(--border-subtle);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.right-panel > * {
+  min-height: 0;
+}
+
+@media (max-width: 1200px) {
+  .main-area {
+    grid-template-columns: 240px 1fr 280px;
+  }
+}
+
+@media (max-width: 900px) {
+  .main-area {
+    grid-template-columns: 200px 1fr 240px;
+  }
+}
