@@ -3,15 +3,7 @@
 //! Bootstraps logging, loads the window icon, configures the native
 //! viewport, and hands control to the egui app.
 
-use std::sync::Arc;
-
 use eframe::egui;
-use parking_lot::RwLock;
-
-use pro_video_editor::app::ProApp;
-use pro_video_editor::state::editor::EditorState;
-use pro_video_editor::state::project::Project;
-use pro_video_editor::theme;
 
 fn main() -> eframe::Result<()> {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info"))
@@ -19,10 +11,19 @@ fn main() -> eframe::Result<()> {
         .init();
 
     log::info!("Pro Video Editor starting up (native, egui + wgpu)");
-    log::info!("Platform: {} {}", std::env::consts::OS, std::env::consts::ARCH);
-
-    let project = Arc::new(RwLock::new(Project::default()));
-    let editor = Arc::new(RwLock::new(EditorState::default()));
+    log::info!(
+        "Platform: {} {}",
+        std::env::consts::OS,
+        std::env::consts::ARCH
+    );
+    log::info!(
+        "FFmpeg playback: {}",
+        if cfg!(feature = "ffmpeg") {
+            "enabled"
+        } else {
+            "disabled (build with --features ffmpeg to enable)"
+        }
+    );
 
     let icon = load_icon();
 
@@ -44,15 +45,14 @@ fn main() -> eframe::Result<()> {
         ..Default::default()
     };
 
-    eframe::run_simple_native("Pro Video Editor", options, move |ctx, _frame| {
-        theme::apply(ctx);
-        let mut app = ProApp::new(project.clone(), editor.clone());
-        app.update(ctx, _frame);
-    })
+    eframe::run_native(
+        "Pro Video Editor",
+        options,
+        Box::new(|cc| Ok(Box::new(pro_video_editor::app::ProApp::new(cc)))),
+    )
 }
 
 fn load_icon() -> egui::IconData {
-    // Embed the icon at compile time so the binary is self-contained.
     let bytes = include_bytes!("../assets/icon.png");
     match image::load_from_memory(bytes) {
         Ok(img) => {

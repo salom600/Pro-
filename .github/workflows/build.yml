@@ -25,23 +25,23 @@ jobs:
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: linux-x64
+            features: ffmpeg
             artifact_name: pro-video-editor
-            artifact_ext: ""
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x64
+            features: ""
             artifact_name: pro-video-editor.exe
-            artifact_ext: ".exe"
           - os: macos-14
             target: aarch64-apple-darwin
             label: macos-arm64
+            features: ffmpeg
             artifact_name: pro-video-editor
-            artifact_ext: ""
           - os: macos-13
             target: x86_64-apple-darwin
             label: macos-x64
+            features: ffmpeg
             artifact_name: pro-video-editor
-            artifact_ext: ""
 
     steps:
       - name: Checkout
@@ -75,10 +75,27 @@ jobs:
             libxkbcommon-dev \
             libssl-dev \
             libgl1-mesa-dev \
-            libegl1-mesa-dev
+            libegl1-mesa-dev \
+            libavcodec-dev \
+            libavformat-dev \
+            libavutil-dev \
+            libavfilter-dev \
+            libswscale-dev \
+            libswresample-dev
+
+      - name: Install macOS dependencies
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
 
       - name: Build (release)
-        run: cargo build --release --target ${{ matrix.target }}
+        shell: bash
+        run: |
+          FEATURES="${{ matrix.features }}"
+          if [ -n "$FEATURES" ]; then
+            cargo build --release --target ${{ matrix.target }} --features "$FEATURES"
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
 
       - name: Package binary (Unix)
         if: runner.os != 'Windows'
@@ -116,6 +133,7 @@ jobs:
         run: |
           echo "## Build — ${{ matrix.label }}" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Features: ${{ matrix.features }}" >> $GITHUB_STEP_SUMMARY
           ls -la target/${{ matrix.target }}/release/pro-video-editor* 2>/dev/null || echo "No binary found"
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "Binary size: $(du -h target/${{ matrix.target }}/release/pro-video-editor* 2>/dev/null | head -1 | cut -f1 || echo 'unknown')"
@@ -155,5 +173,9 @@ jobs:
             - **Windows**: download `.zip`, extract, run `pro-video-editor.exe`.
             - **macOS**: download `.tar.gz`, extract, run `./pro-video-editor` (may need `xattr -dr com.apple.quarantine`).
             - **Linux**: download `.tar.gz`, extract, run `./pro-video-editor`.
+
+            ### Video Playback
+            - Linux and macOS builds include FFmpeg integration for real video playback.
+            - Windows build uses placeholder display (FFmpeg integration pending).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

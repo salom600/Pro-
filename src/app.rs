@@ -1,38 +1,64 @@
-//! Main egui application — wires together all UI panels and state.
+//! Main egui application — wires together all UI panels, state, and playback.
+//!
+//! Implements `eframe::App` so the app persists across frames (critical for
+//! video decoder caching and texture persistence).
 
 use std::sync::Arc;
+use std::time::Instant;
 
 use eframe::egui;
 use parking_lot::RwLock;
 
-use crate::state::editor::EditorState;
+use crate::media::PlaybackEngine;
+use crate::state::editor::{EditorState, Tool};
 use crate::state::project::Project;
 use crate::ui;
 
 /// The Pro Video Editor application.
-///
-/// State is held in `Arc<RwLock<...>>` so background threads (media
-/// probing, future render workers) can mutate it without blocking the
-/// UI thread. The UI takes a read snapshot each frame.
 pub struct ProApp {
     pub project: Arc<RwLock<Project>>,
     pub editor: Arc<RwLock<EditorState>>,
+    pub playback: PlaybackEngine,
+
+    // Video textures for the Source and Program monitors.
+    pub source_texture: Option<egui::TextureHandle>,
+    pub program_texture: Option<egui::TextureHandle>,
+
+    // Track the last decoded frame to avoid redundant decoding.
+    pub last_source_request: Option<(String, f64)>,
+    pub last_program_request: Option<(String, f64)>,
+
+    // Playback timing.
+    pub last_frame_time: Option<Instant>,
+
+    // UI state.
     pub status_message: String,
     pub last_save_path: Option<String>,
 }
 
 impl ProApp {
-    pub fn new(project: Arc<RwLock<Project>>, editor: Arc<RwLock<EditorState>>) -> Self {
+    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
         Self {
-            project,
-            editor,
+            project: Arc::new(RwLock::new(Project::default())),
+            editor: Arc::new(RwLock::new(EditorState::default())),
+            playback: PlaybackEngine::new(),
+            source_texture: None,
+            program_texture: None,
+            last_source_request: None,
+            last_program_request: None,
+            last_frame_time: None,
             status_message: "Ready".to_string(),
             last_save_path: None,
         }
     }
 
-    /// Snapshots state and renders one frame.
-    pub fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    // ── eframe::App trait ──────────────────────────────────────────────────
+}
+
+impl eframe::App for ProApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        crate::theme::apply(ctx);
+
         // Ensure default panels are visible on first run.
         {
             let mut e = self.editor.write();
@@ -43,14 +69,140 @@ impl ProApp {
             }
         }
 
+        // 1. Advance playhead during playback.
+        self.handle_playback_timing(ctx);
+
+        // 2. Decode video frames for current playhead position.
+        self.update_video_frames(ctx);
+
+        // 3. Handle keyboard shortcuts.
         self.handle_shortcuts(ctx);
 
-        // Layout: top → bottom, left → right → center.
+        // 4. Render UI.
+        self.render_ui(ctx);
+    }
+}
+
+// ── Playback / frame update ────────────────────────────────────────────────
+impl ProApp {
+    fn handle_playback_timing(&mut self, ctx: &egui::Context) {
+        let now = Instant::now();
+        let is_playing = self.editor.read().timeline.is_playing;
+
+        if is_playing {
+            if let Some(last) = self.last_frame_time {
+                let elapsed = now.duration_since(last).as_secs_f64();
+                let playhead = self.editor.read().timeline.playhead;
+                self.editor.write().set_playhead(playhead + elapsed);
+
+                // Check if we've reached the end of the timeline.
+                let timeline_end = self.project.read().timeline_duration();
+                if self.editor.read().timeline.playhead >= timeline_end && timeline_end > 0.0 {
+                    self.editor.write().timeline.is_playing = false;
+                    self.editor.write().set_playhead(timeline_end);
+                }
+            }
+            ctx.request_repaint();
+        }
+        self.last_frame_time = Some(now);
+    }
+
+    /// Decodes the frame at the current playhead position and updates the
+    /// Program monitor texture. Also updates the Source monitor texture
+    /// when the selected media changes.
+    fn update_video_frames(&mut self, ctx: &egui::Context) {
+        self.update_program_frame(ctx);
+        self.update_source_frame(ctx);
+    }
+
+    fn update_program_frame(&mut self, ctx: &egui::Context) {
+        let playhead = self.editor.read().timeline.playhead;
+
+        // Find the clip at the playhead position.
+        let clip_info = {
+            let p = self.project.read();
+            find_clip_at_playhead(&p.tracks, playhead).and_then(|c| {
+                let media = p.find_media(&c.media_id)?;
+                let source_ts = c.source_in + (playhead - c.timeline_start);
+                Some(FrameInfo {
+                    media_id: c.media_id.clone(),
+                    path: media.path.clone(),
+                    timestamp: source_ts,
+                })
+            })
+        };
+
+        if let Some(info) = clip_info {
+            // Only decode if the request has changed by more than ~1 frame.
+            let need_new = match &self.last_program_request {
+                Some((id, ts)) => *id != info.media_id || (*ts - info.timestamp).abs() > 0.03,
+                None => true,
+            };
+
+            if need_new {
+                if let Some(frame) = self.playback.get_frame(&info.media_id, &info.path, info.timestamp) {
+                    let texture = ctx.load_texture(
+                        "program_frame",
+                        frame.to_color_image(),
+                        egui::TextureOptions::LINEAR,
+                    );
+                    self.program_texture = Some(texture);
+                    self.last_program_request = Some((info.media_id, info.timestamp));
+                }
+            }
+        } else {
+            self.program_texture = None;
+            self.last_program_request = None;
+        }
+    }
+
+    fn update_source_frame(&mut self, ctx: &egui::Context) {
+        let source_id = self.editor.read().source_media_id.clone();
+
+        if let Some(id) = source_id {
+            let path = {
+                let p = self.project.read();
+                p.find_media(&id).map(|m| m.path.clone())
+            };
+
+            if let Some(path) = path {
+                // For now, show the first frame of the source.
+                let timestamp = 0.0;
+                let need_new = match &self.last_source_request {
+                    Some((last_id, ts)) => *last_id != id || (*ts - timestamp).abs() > 0.03,
+                    None => true,
+                };
+
+                if need_new {
+                    if let Some(frame) = self.playback.get_frame(&id, &path, timestamp) {
+                        let texture = ctx.load_texture(
+                            "source_frame",
+                            frame.to_color_image(),
+                            egui::TextureOptions::LINEAR,
+                        );
+                        self.source_texture = Some(texture);
+                        self.last_source_request = Some((id, timestamp));
+                    }
+                }
+            } else {
+                self.source_texture = None;
+                self.last_source_request = None;
+            }
+        } else {
+            self.source_texture = None;
+            self.last_source_request = None;
+        }
+    }
+}
+
+// ── UI rendering ───────────────────────────────────────────────────────────
+impl ProApp {
+    fn render_ui(&mut self, ctx: &egui::Context) {
         ui::titlebar::render(ctx, self);
         ui::toolbar::render(ctx, self);
 
         egui::TopBottomPanel::bottom("statusbar")
-            .exact_height(24.0)
+            .exact_height(26.0)
             .show(ctx, |ui| {
                 ui::statusbar::render(ui, self);
             });
@@ -59,66 +211,60 @@ impl ProApp {
         let show_bin = self.editor.read().show_media_bin;
         if show_bin {
             egui::SidePanel::left("media_bin_panel")
-                .default_width(280.0)
+                .default_width(260.0)
                 .min_width(200.0)
-                .max_width(420.0)
+                .max_width(400.0)
                 .resizable(true)
                 .show(ctx, |ui| {
                     ui::media_bin::render(ui, self);
                 });
         }
 
-        // Right panel — inspector + effects (stacked)
+        // Right panel — inspector + effects (resizable split)
         let show_right = self.editor.read().show_inspector || self.editor.read().show_effects;
         if show_right {
             egui::SidePanel::right("right_panel")
-                .default_width(320.0)
-                .min_width(240.0)
-                .max_width(480.0)
+                .default_width(300.0)
+                .min_width(220.0)
+                .max_width(440.0)
                 .resizable(true)
                 .show(ctx, |ui| {
                     let show_inspector = self.editor.read().show_inspector;
                     let show_effects = self.editor.read().show_effects;
-                    let available_h = ui.available_height();
-                    let inspector_h = if show_inspector && show_effects {
-                        available_h * 0.55
-                    } else {
-                        available_h
-                    };
 
                     if show_inspector {
-                        ui.allocate_ui_with_layout(
-                            egui::Vec2::new(ui.available_width(), inspector_h),
-                            egui::Layout::top_down(egui::Align::LEFT),
-                            |ui| ui::inspector::render(ui, self),
-                        );
-                    }
-                    if show_inspector && show_effects {
-                        ui.separator();
+                        egui::TopBottomPanel::top("inspector_panel")
+                            .resizable(true)
+                            .default_height(ui.available_height() * 0.5)
+                            .min_height(120.0)
+                            .show_inside(ui, |ui| {
+                                ui::inspector::render(ui, self);
+                            });
                     }
                     if show_effects {
-                        ui::effects::render(ui, self);
+                        egui::CentralPanel::default()
+                            .show_inside(ui, |ui| {
+                                ui::effects::render(ui, self);
+                            });
                     }
                 });
         }
 
-        // Center — monitors (top) + timeline (bottom)
+        // Center — monitors (top, resizable) + timeline (bottom)
+        egui::TopBottomPanel::top("monitors_panel")
+            .resizable(true)
+            .default_height(340.0)
+            .min_height(200.0)
+            .max_height(600.0)
+            .show(ctx, |ui| {
+                ui.painter()
+                    .rect_filled(ui.max_rect(), 0.0, crate::theme::BG_DEEPEST);
+                ui::monitors::render(ui, self);
+            });
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            let available = ui.available_size();
-            let monitor_h = (available.y * 0.42).min(360.0).max(220.0);
-
-            ui.allocate_ui_with_layout(
-                egui::Vec2::new(available.x, monitor_h),
-                egui::Layout::top_down(egui::Align::LEFT),
-                |ui| {
-                    ui.painter()
-                        .rect_filled(ui.max_rect(), 0.0, crate::theme::BG_DEEPEST);
-                    ui::monitors::render(ui, self);
-                },
-            );
-
-            ui.separator();
-
+            ui.painter()
+                .rect_filled(ui.max_rect(), 0.0, crate::theme::BG_PANEL);
             ui::timeline::render(ui, self);
         });
 
@@ -129,33 +275,30 @@ impl ProApp {
         if self.editor.read().about_open {
             ui::about::render(ctx, self);
         }
-
-        // Request repaint when playing for smooth playback.
-        if self.editor.read().timeline.is_playing {
-            ctx.request_repaint();
-        }
     }
+}
 
+// ── Keyboard shortcuts ─────────────────────────────────────────────────────
+impl ProApp {
     fn handle_shortcuts(&mut self, ctx: &egui::Context) {
         if ctx.wants_keyboard_input() {
             return;
         }
 
-        // Snapshot all inputs first so we don't hold any borrow on `self`.
         let (tool_change, toggle_play, skip_left, skip_right, split_now, delete_selected) =
             ctx.input(|i| {
                 let ctrl = i.modifiers.ctrl || i.modifiers.command;
                 let tool = if !ctrl {
                     if i.key_pressed(egui::Key::V) {
-                        Some(crate::state::editor::Tool::Select)
+                        Some(Tool::Select)
                     } else if i.key_pressed(egui::Key::C) {
-                        Some(crate::state::editor::Tool::Razor)
+                        Some(Tool::Razor)
                     } else if i.key_pressed(egui::Key::Y) {
-                        Some(crate::state::editor::Tool::Slip)
+                        Some(Tool::Slip)
                     } else if i.key_pressed(egui::Key::B) {
-                        Some(crate::state::editor::Tool::Ripple)
+                        Some(Tool::Ripple)
                     } else if i.key_pressed(egui::Key::H) {
-                        Some(crate::state::editor::Tool::Hand)
+                        Some(Tool::Hand)
                     } else {
                         None
                     }
@@ -172,7 +315,6 @@ impl ProApp {
                 )
             });
 
-        // Apply tool change
         if let Some(tool) = tool_change {
             self.editor.write().active_tool = tool;
         }
@@ -196,13 +338,18 @@ impl ProApp {
             }
         }
     }
+}
 
-    // ---- Edit operations (mutate shared state) ----
-
+// ── Edit operations ────────────────────────────────────────────────────────
+impl ProApp {
     pub fn new_project(&mut self) {
         *self.project.write() = Project::default();
         self.editor.write().selected_clip_id = None;
         self.editor.write().set_playhead(0.0);
+        self.source_texture = None;
+        self.program_texture = None;
+        self.last_source_request = None;
+        self.last_program_request = None;
         self.status_message = "New project created".to_string();
     }
 
@@ -258,8 +405,11 @@ impl ProApp {
 
     pub fn remove_media(&mut self, id: &str) {
         self.project.write().remove_media(id);
+        self.playback.invalidate(id);
         if self.editor.read().source_media_id.as_deref() == Some(id) {
             self.editor.write().source_media_id = None;
+            self.source_texture = None;
+            self.last_source_request = None;
         }
         self.status_message = "Media removed".to_string();
     }
@@ -270,7 +420,6 @@ impl ProApp {
         track_id: &str,
         timeline_start: f64,
     ) -> Result<(), String> {
-        // Snapshot the media asset info we need, then release the read lock.
         let (name, kind, duration) = {
             let p = self.project.read();
             let asset = p.find_media(media_id).ok_or("Media not found")?;
@@ -286,7 +435,6 @@ impl ProApp {
             )
         };
 
-        // Acquire write lock and push the new clip.
         let mut p = self.project.write();
         let track = p.find_track_mut(track_id).ok_or("Track not found")?;
         let mut clip = crate::state::clip::Clip::new(media_id, &name, kind, duration);
@@ -418,6 +566,8 @@ impl ProApp {
 
     pub fn set_source_media(&mut self, id: Option<String>) {
         self.editor.write().source_media_id = id;
+        // Force re-decode of source frame.
+        self.last_source_request = None;
     }
 
     pub fn generate_thumbnail(&mut self, media_id: &str) {
@@ -449,9 +599,8 @@ impl ProApp {
         if project.tracks.iter().all(|t| t.clips.is_empty()) {
             return Err("Timeline is empty — nothing to export.".into());
         }
-        let preset = preset_id.to_string();
-        let preset = export_presets::find(&preset)
-            .ok_or_else(|| format!("Unknown preset: {preset}"))?
+        let preset = export_presets::find(preset_id)
+            .ok_or_else(|| format!("Unknown preset: {preset_id}"))?
             .clone();
 
         let manifest_path = format!("{output_path}.export.json");
@@ -466,4 +615,26 @@ impl ProApp {
         self.status_message = format!("Export manifest written to {manifest_path}");
         Ok(())
     }
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+struct FrameInfo {
+    media_id: String,
+    path: String,
+    timestamp: f64,
+}
+
+fn find_clip_at_playhead(
+    tracks: &[crate::state::track::Track],
+    time: f64,
+) -> Option<&crate::state::clip::Clip> {
+    for t in tracks {
+        for c in &t.clips {
+            if time >= c.timeline_start && time < c.timeline_end() {
+                return Some(c);
+            }
+        }
+    }
+    None
 }

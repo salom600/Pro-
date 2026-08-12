@@ -3,6 +3,7 @@
 pub mod about;
 pub mod effects;
 pub mod export_dialog;
+pub mod icons;
 pub mod inspector;
 pub mod media_bin;
 pub mod monitors;
