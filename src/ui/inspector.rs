@@ -72,7 +72,8 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
 
                 section(ui, "Timing", |ui| {
                     number_field(ui, "Timeline Start (s)", clip.timeline_start, 0.1, |app, v| {
-                        if let Some(id) = app.editor.read().selected_clip_id.clone() {
+                        let id = app.editor.read().selected_clip_id.clone();
+                        if let Some(id) = id {
                             app.move_clip(&id, None, v);
                         }
                     });

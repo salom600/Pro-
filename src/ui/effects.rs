@@ -114,7 +114,8 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
 
                     let click = resp.response.interact(egui::Sense::click());
                     if click.clicked() && has_selection {
-                        if let Some(clip_id) = app.editor.read().selected_clip_id.clone() {
+                        let clip_id = app.editor.read().selected_clip_id.clone();
+                        if let Some(clip_id) = clip_id {
                             let _ = app.apply_effect(&clip_id, id);
                         }
                     }
