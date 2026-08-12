@@ -31,62 +31,37 @@ pub struct ExportResult {
     pub bytes: u64,
 }
 
-const PRESETS: &[ExportPreset] = &[
-    ExportPreset {
-        id: "youtube-1080p".into(),
-        name: "YouTube 1080p".into(),
-        container: "mp4".into(),
-        video_codec: "h264".into(),
-        audio_codec: "aac".into(),
-        resolution: "1920x1080".into(),
-        fps: 30.0,
-        bitrate_mbps: 12.0,
-    },
-    ExportPreset {
-        id: "youtube-4k".into(),
-        name: "YouTube 4K".into(),
-        container: "mp4".into(),
-        video_codec: "h265".into(),
-        audio_codec: "aac".into(),
-        resolution: "3840x2160".into(),
-        fps: 30.0,
-        bitrate_mbps: 45.0,
-    },
-    ExportPreset {
-        id: "web-720p".into(),
-        name: "Web 720p".into(),
-        container: "mp4".into(),
-        video_codec: "h264".into(),
-        audio_codec: "aac".into(),
-        resolution: "1280x720".into(),
-        fps: 30.0,
-        bitrate_mbps: 5.0,
-    },
-    ExportPreset {
-        id: "social-1080p".into(),
-        name: "Social Media 1080p".into(),
-        container: "mp4".into(),
-        video_codec: "h264".into(),
-        audio_codec: "aac".into(),
-        resolution: "1080x1080".into(),
-        fps: 30.0,
-        bitrate_mbps: 10.0,
-    },
-    ExportPreset {
-        id: "prores-1080p".into(),
-        name: "ProRes 1080p (editing)".into(),
-        container: "mov".into(),
-        video_codec: "prores".into(),
-        audio_codec: "pcm_s16le".into(),
-        resolution: "1920x1080".into(),
-        fps: 30.0,
-        bitrate_mbps: 120.0,
-    },
+const PRESETS: &[(&str, &str, &str, &str, &str, &str, f64, f64)] = &[
+    ("youtube-1080p", "YouTube 1080p", "mp4", "h264", "aac", "1920x1080", 30.0, 12.0),
+    ("youtube-4k", "YouTube 4K", "mp4", "h265", "aac", "3840x2160", 30.0, 45.0),
+    ("web-720p", "Web 720p", "mp4", "h264", "aac", "1280x720", 30.0, 5.0),
+    ("social-1080p", "Social Media 1080p", "mp4", "h264", "aac", "1080x1080", 30.0, 10.0),
+    ("prores-1080p", "ProRes 1080p (editing)", "mov", "prores", "pcm_s16le", "1920x1080", 30.0, 120.0),
 ];
+
+fn all_presets() -> Vec<ExportPreset> {
+    PRESETS
+        .iter()
+        .map(|(id, name, container, video_codec, audio_codec, resolution, fps, bitrate_mbps)| ExportPreset {
+            id: (*id).to_string(),
+            name: (*name).to_string(),
+            container: (*container).to_string(),
+            video_codec: (*video_codec).to_string(),
+            audio_codec: (*audio_codec).to_string(),
+            resolution: (*resolution).to_string(),
+            fps: *fps,
+            bitrate_mbps: *bitrate_mbps,
+        })
+        .collect()
+}
+
+fn find_preset(id: &str) -> Option<ExportPreset> {
+    all_presets().into_iter().find(|p| p.id == id)
+}
 
 #[tauri::command]
 pub fn get_export_presets() -> Vec<ExportPreset> {
-    PRESETS.to_vec()
+    all_presets()
 }
 
 /// Exports the current project. This is a foundation stub — the real
@@ -104,11 +79,8 @@ pub async fn export_project(
         return Err("Timeline is empty — nothing to export.".into());
     }
 
-    let preset = PRESETS
-        .iter()
-        .find(|p| p.id == request.preset_id)
-        .ok_or_else(|| format!("Unknown preset: {}", request.preset_id))?
-        .clone();
+    let preset = find_preset(&request.preset_id)
+        .ok_or_else(|| format!("Unknown preset: {}", request.preset_id))?;
 
     let path = PathBuf::from(&request.output_path);
     if path.parent().map(|p| !p.exists()).unwrap_or(true) {

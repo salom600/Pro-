@@ -3,13 +3,13 @@ use serde::{Deserialize, Serialize};
 /// Returns the built-in effect catalogue for the frontend.
 #[tauri::command]
 pub fn list_effects() -> Vec<EffectDescriptor> {
-    BUILTIN_EFFECTS.to_vec()
+    builtin_effects()
 }
 
 /// Returns the built-in transition catalogue.
 #[tauri::command]
 pub fn list_transitions() -> Vec<EffectDescriptor> {
-    BUILTIN_TRANSITIONS.to_vec()
+    builtin_transitions()
 }
 
 /// Attaches an effect to a clip (stored in clip.effects).
@@ -41,86 +41,45 @@ pub struct EffectDescriptor {
     pub description: String,
 }
 
-const BUILTIN_EFFECTS: &[EffectDescriptor] = &[
-    EffectDescriptor {
-        id: "color-grade".into(),
-        name: "Color Grade".into(),
-        category: "color".into(),
-        description: "Adjust brightness, contrast, saturation, and temperature.".into(),
-    },
-    EffectDescriptor {
-        id: "vignette".into(),
-        name: "Vignette".into(),
-        category: "image".into(),
-        description: "Darken the corners of the frame for cinematic focus.".into(),
-    },
-    EffectDescriptor {
-        id: "sharpen".into(),
-        name: "Sharpen".into(),
-        category: "image".into(),
-        description: "Enhance edge detail for crisper footage.".into(),
-    },
-    EffectDescriptor {
-        id: "blur".into(),
-        name: "Gaussian Blur".into(),
-        category: "image".into(),
-        description: "Apply a soft blur — useful for backgrounds or censoring.".into(),
-    },
-    EffectDescriptor {
-        id: "grain".into(),
-        name: "Film Grain".into(),
-        category: "image".into(),
-        description: "Add subtle analog film grain for texture.".into(),
-    },
-    EffectDescriptor {
-        id: "noise-reduce".into(),
-        name: "Noise Reduce".into(),
-        category: "audio".into(),
-        description: "Reduce background hiss from dialogue tracks.".into(),
-    },
-    EffectDescriptor {
-        id: "eq".into(),
-        name: "Equalizer".into(),
-        category: "audio".into(),
-        description: "Shape frequency response for clarity and warmth.".into(),
-    },
-    EffectDescriptor {
-        id: "compressor".into(),
-        name: "Compressor".into(),
-        category: "audio".into(),
-        description: "Tame dynamic range for consistent levels.".into(),
-    },
+const BUILTIN_EFFECTS: &[(&str, &str, &str, &str)] = &[
+    ("color-grade", "Color Grade", "color", "Adjust brightness, contrast, saturation, and temperature."),
+    ("vignette", "Vignette", "image", "Darken the corners of the frame for cinematic focus."),
+    ("sharpen", "Sharpen", "image", "Enhance edge detail for crisper footage."),
+    ("blur", "Gaussian Blur", "image", "Apply a soft blur — useful for backgrounds or censoring."),
+    ("grain", "Film Grain", "image", "Add subtle analog film grain for texture."),
+    ("noise-reduce", "Noise Reduce", "audio", "Reduce background hiss from dialogue tracks."),
+    ("eq", "Equalizer", "audio", "Shape frequency response for clarity and warmth."),
+    ("compressor", "Compressor", "audio", "Tame dynamic range for consistent levels."),
 ];
 
-const BUILTIN_TRANSITIONS: &[EffectDescriptor] = &[
-    EffectDescriptor {
-        id: "fade".into(),
-        name: "Fade".into(),
-        category: "transition".into(),
-        description: "Fade to/from black.".into(),
-    },
-    EffectDescriptor {
-        id: "dissolve".into(),
-        name: "Dissolve".into(),
-        category: "transition".into(),
-        description: "Cross-dissolve between two shots.".into(),
-    },
-    EffectDescriptor {
-        id: "wipe".into(),
-        name: "Wipe".into(),
-        category: "transition".into(),
-        description: "Wipe from one shot to the next.".into(),
-    },
-    EffectDescriptor {
-        id: "slide".into(),
-        name: "Slide".into(),
-        category: "transition".into(),
-        description: "Slide the next shot in over the previous.".into(),
-    },
-    EffectDescriptor {
-        id: "zoom".into(),
-        name: "Zoom".into(),
-        category: "transition".into(),
-        description: "Punch in/out between two shots.".into(),
-    },
+const BUILTIN_TRANSITIONS: &[(&str, &str, &str, &str)] = &[
+    ("fade", "Fade", "transition", "Fade to/from black."),
+    ("dissolve", "Dissolve", "transition", "Cross-dissolve between two shots."),
+    ("wipe", "Wipe", "transition", "Wipe from one shot to the next."),
+    ("slide", "Slide", "transition", "Slide the next shot in over the previous."),
+    ("zoom", "Zoom", "transition", "Punch in/out between two shots."),
 ];
+
+fn builtin_effects() -> Vec<EffectDescriptor> {
+    BUILTIN_EFFECTS
+        .iter()
+        .map(|(id, name, category, description)| EffectDescriptor {
+            id: (*id).to_string(),
+            name: (*name).to_string(),
+            category: (*category).to_string(),
+            description: (*description).to_string(),
+        })
+        .collect()
+}
+
+fn builtin_transitions() -> Vec<EffectDescriptor> {
+    BUILTIN_TRANSITIONS
+        .iter()
+        .map(|(id, name, category, description)| EffectDescriptor {
+            id: (*id).to_string(),
+            name: (*name).to_string(),
+            category: (*category).to_string(),
+            description: (*description).to_string(),
+        })
+        .collect()
+}
