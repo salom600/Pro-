@@ -24,15 +24,19 @@ jobs:
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: linux-x64
+            bundles: "--bundles deb"
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x64
+            bundles: ""
           - os: macos-14
             target: aarch64-apple-darwin
             label: macos-arm64
+            bundles: ""
           - os: macos-13
             target: x86_64-apple-darwin
             label: macos-x64
+            bundles: ""
 
     steps:
       - name: Checkout
@@ -78,7 +82,7 @@ jobs:
         run: npm run build
 
       - name: Build Tauri app
-        run: npx tauri build --target ${{ matrix.target }}
+        run: npx tauri build --target ${{ matrix.target }} ${{ matrix.bundles }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
