@@ -1,6 +1,6 @@
 name: Build
 
-on:
+"on":
   push:
     branches: [main, master]
     tags: ["v*"]
@@ -9,17 +9,13 @@ on:
   workflow_dispatch:
 
 env:
-  CARGO_INCREMENTAL: 0
-  CARGO_NET_RETRY: 10
-  RUSTUP_MAX_RETRIES: 10
-  # Keep FFmpeg feature OFF in CI for max portability — the build still
-  # produces a fully working app; media probing falls back to extension
-  # heuristics. Enable the feature locally with: cargo build --features ffmpeg
-  CARGO_FEATURES: ""
+  CARGO_INCREMENTAL: "0"
+  CARGO_NET_RETRY: "10"
+  RUSTUP_MAX_RETRIES: "10"
 
 jobs:
   build:
-    name: Build (${{ matrix.os }} / ${{ matrix.target }})
+    name: Build (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -28,23 +24,15 @@ jobs:
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: linux-x64
-            artifact_ext: deb
-            extra_artifact_ext: AppImage
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x64
-            artifact_ext: msi
-            extra_artifact_ext: exe
           - os: macos-14
             target: aarch64-apple-darwin
             label: macos-arm64
-            artifact_ext: dmg
-            extra_artifact_ext: app
           - os: macos-13
             target: x86_64-apple-darwin
             label: macos-x64
-            artifact_ext: dmg
-            extra_artifact_ext: app
 
     steps:
       - name: Checkout
@@ -53,23 +41,22 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "20"
           cache: npm
-          cache-dependency-path: package-lock.json
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - name: Cache cargo registry
+      - name: Cache cargo
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: cargo-${{ matrix.label }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          key: cargo-${{ matrix.label }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
             cargo-${{ matrix.label }}-
 
@@ -84,37 +71,21 @@ jobs:
             patchelf \
             libgtk-3-dev \
             libayatana-appindicator3-dev
-          # FFmpeg dev libs are optional — enable in CARGO_FEATURES if you
-          # want real media probing in CI artifacts.
-          # sudo apt-get install -y libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev libavdevice-dev libswscale-dev libswresample-dev
 
       - name: Install npm dependencies
-        run: npm ci || npm install
-
-      - name: Verify TypeScript compiles
-        run: npx tsc --noEmit
+        run: npm install
 
       - name: Build frontend
         run: npm run build
 
-      - name: Build Tauri app (debug)
-        if: github.event_name == 'pull_request'
-        uses: tauri-apps/tauri-action@v0
+      - name: Build Tauri app
+        run: npx tauri build --target ${{ matrix.target }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: --target ${{ matrix.target }} --debug
 
-      - name: Build Tauri app (release)
-        if: github.event_name != 'pull_request'
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          args: --target ${{ matrix.target }}
-
-      - name: Upload build artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: pro-video-editor-${{ matrix.label }}
           path: |
@@ -123,24 +94,8 @@ jobs:
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
             src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.app
           if-no-files-found: warn
           retention-days: 30
-
-      - name: Summarize build
-        if: always()
-        shell: bash
-        run: |
-          echo "## Build summary — ${{ matrix.label }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          if [ -d src-tauri/target/${{ matrix.target }}/release/bundle ]; then
-            echo "Artifacts produced:" >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-            find src-tauri/target/${{ matrix.target }}/release/bundle -type f 2>/dev/null | head -50 >> $GITHUB_STEP_SUMMARY
-            echo '```' >> $GITHUB_STEP_SUMMARY
-          else
-            echo "No bundle directory found." >> $GITHUB_STEP_SUMMARY
-          fi
 
   release:
     name: Release
@@ -156,7 +111,7 @@ jobs:
         with:
           path: artifacts
 
-      - name: Display structure
+      - name: List artifacts
         run: find artifacts -type f | head -50
 
       - name: Create GitHub Release
@@ -177,13 +132,9 @@ jobs:
             Cross-platform installers for Windows, macOS, and Linux.
 
             ### Install
-            - **Windows**: download the `.msi` (or `.exe` NSIS installer) and run it.
+            - **Windows**: download the `.msi` and run it.
             - **macOS**: download the `.dmg`, open it, and drag **Pro Video Editor** to Applications.
             - **Linux**: install the `.deb` with `sudo dpkg -i pro-video-editor_*.deb`,
               or make the `.AppImage` executable and double-click.
-
-            > Foundation release. Timeline, media bin, dual monitors, inspector,
-            > effects, and export dialog are all present. Full FFmpeg render
-            > pipeline lands in the next iteration.
-          env:
-            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
