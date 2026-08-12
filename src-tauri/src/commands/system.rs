@@ -22,7 +22,9 @@ pub fn get_app_info(app: AppHandle) -> AppInfo {
     AppInfo {
         name: pkg.name.clone(),
         version: pkg.version.to_string(),
-        rust_version: env!("CARGO_PKG_RUST_VERSION", "unknown").to_string(),
+        rust_version: option_env!("CARGO_PKG_RUST_VERSION")
+            .unwrap_or("unknown")
+            .to_string(),
     }
 }
 
