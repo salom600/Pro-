@@ -105,11 +105,11 @@ fn probe_with_ffmpeg(path: &str) -> anyhow::Result<MediaProbe> {
         }
     }
 
-    let (width, height, fps, codec) = if let Some((stream, params)) = video {
+    let (width, height, fps, codec) = if let Some((stream, ref params)) = video {
         // Extract codec id BEFORE moving params into from_parameters.
         let codec_name = format!("{:?}", params.id());
 
-        let ctx_decoder = ffmpeg::codec::context::Context::from_parameters(params)?;
+        let ctx_decoder = ffmpeg::codec::context::Context::from_parameters(params.clone())?;
         let decoder = ctx_decoder.decoder().video()?;
 
         let w = decoder.width();

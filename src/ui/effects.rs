@@ -74,15 +74,33 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                     let resp = frame.show(ui, |ui| {
                         ui.set_min_width(ui.available_width() - 8.0);
                         ui.horizontal(|ui| {
-                            // Category icon
-                            let icon = match *category {
-                                "color" => "🎨",
-                                "image" => "✨",
-                                "audio" => "🔊",
-                                "transition" => "🔄",
-                                _ => "◆",
+                            // Category label (first letter, stylized)
+                            let cat_label = match *category {
+                                "color" => "C",
+                                "image" => "I",
+                                "audio" => "A",
+                                "transition" => "T",
+                                _ => "•",
                             };
-                            ui.label(egui::RichText::new(icon).size(16.0));
+                            let cat_color = match *category {
+                                "color" => theme::ACCENT_VIOLET,
+                                "image" => theme::ACCENT_AMBER,
+                                "audio" => theme::ACCENT_CYAN,
+                                "transition" => theme::ACCENT,
+                                _ => theme::TEXT_TERTIARY,
+                            };
+                            let (icon_rect, _) = ui.allocate_exact_size(
+                                egui::Vec2::new(28.0, 28.0),
+                                egui::Sense::hover(),
+                            );
+                            ui.painter().rect_filled(icon_rect, 3.0, cat_color);
+                            ui.painter().text(
+                                icon_rect.center(),
+                                egui::Align2::CENTER_CENTER,
+                                cat_label,
+                                egui::FontId::proportional(12.0),
+                                egui::Color32::WHITE,
+                            );
 
                             ui.vertical(|ui| {
                                 ui.label(

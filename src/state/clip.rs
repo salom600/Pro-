@@ -55,9 +55,9 @@ impl ClipKind {
 
     pub fn display_icon(&self) -> &'static str {
         match self {
-            ClipKind::Video => "🎬",
-            ClipKind::Audio => "🎵",
-            ClipKind::Image => "🖼",
+            ClipKind::Video => "V",
+            ClipKind::Audio => "A",
+            ClipKind::Image => "I",
             ClipKind::Text => "T",
         }
     }

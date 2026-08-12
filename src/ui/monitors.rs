@@ -212,27 +212,13 @@ fn monitor_panel(
     } else if let Some((_, kind, _, _, _, _, _)) = asset_info {
         // No texture available — show appropriate placeholder.
         if playback_available && (kind == "video" || kind == "image") {
-            draw_placeholder(
-                ui,
-                display_rect,
-                "⏳",
-                "Decoding video...",
-                theme::TEXT_TERTIARY,
-            );
+            draw_placeholder(ui, display_rect, "DECODING", "Loading video frame...");
         } else if !playback_available && kind == "video" {
             draw_placeholder(
                 ui,
                 display_rect,
-                "🎬",
-                "FFmpeg not available",
-                theme::TEXT_TERTIARY,
-            );
-            ui.painter().text(
-                display_rect.center() + egui::vec2(0.0, 50.0),
-                egui::Align2::CENTER_CENTER,
-                "Build with --features ffmpeg for video playback",
-                egui::FontId::proportional(9.0),
-                theme::TEXT_TERTIARY,
+                "NO DECODER",
+                "FFmpeg not available in this build",
             );
         } else if kind == "audio" {
             draw_audio_waveform(ui, display_rect);
@@ -240,20 +226,19 @@ fn monitor_panel(
             draw_placeholder(
                 ui,
                 display_rect,
-                "📺",
-                "No preview available",
-                theme::TEXT_TERTIARY,
+                "NO PREVIEW",
+                "Preview not available for this format",
             );
         }
     } else {
         draw_placeholder(
             ui,
             display_rect,
-            "📺",
+            if is_program { "NO CLIP" } else { "NO SOURCE" },
             if is_program {
-                "Timeline is empty"
+                "Timeline is empty — add clips to see preview"
             } else {
-                "Select media from the bin"
+                "Select media from the bin to preview"
             },
             theme::TEXT_TERTIARY,
         );
@@ -317,59 +302,70 @@ fn monitor_panel(
 fn draw_placeholder(
     ui: &mut egui::Ui,
     rect: egui::Rect,
-    icon: &str,
-    text: &str,
+    title: &str,
+    subtitle: &str,
     color: egui::Color32,
 ) {
     let painter = ui.painter();
+    // Title (uppercase, small, letter-spaced feel)
     painter.text(
-        rect.center() + egui::vec2(0.0, -10.0),
+        rect.center() + egui::vec2(0.0, -12.0),
         egui::Align2::CENTER_CENTER,
-        icon,
-        egui::FontId::proportional(36.0),
-        egui::Color32::from_white_alpha(40),
-    );
-    painter.text(
-        rect.center() + egui::vec2(0.0, 25.0),
-        egui::Align2::CENTER_CENTER,
-        text,
+        title,
         egui::FontId::proportional(11.0),
+        egui::Color32::from_white_alpha(50),
+    );
+    // Subtitle
+    painter.text(
+        rect.center() + egui::vec2(0.0, 10.0),
+        egui::Align2::CENTER_CENTER,
+        subtitle,
+        egui::FontId::proportional(10.0),
         color,
     );
 }
 
 fn draw_audio_waveform(ui: &mut egui::Ui, rect: egui::Rect) {
     let painter = ui.painter();
-    let bars = 60;
+    let bars = 80;
     let bar_w = rect.width() / bars as f32;
     let mid_y = rect.center().y;
-    let max_h = rect.height() * 0.35;
+    let max_h = rect.height() * 0.3;
 
     for i in 0..bars {
-        // Stylized waveform pattern.
-        let t = i as f32 * 0.15;
-        let h = max_h * (0.3 + 0.7 * ((t.sin() * (t * 0.7).cos()).abs()));
+        // Stylized waveform pattern — looks like a real audio file.
+        let t = i as f32 * 0.18;
+        let h = max_h * (0.2 + 0.8 * ((t.sin() * (t * 0.7).cos()).abs()));
         let x = rect.left() + i as f32 * bar_w + bar_w * 0.15;
         let w = bar_w * 0.7;
         let bar_rect = egui::Rect::from_center_size(
             egui::pos2(x + w / 2.0, mid_y),
             egui::Vec2::new(w, h * 2.0),
         );
-        let color = if i % 4 == 0 {
+        let color = if i % 6 == 0 {
             theme::ACCENT_CYAN
         } else {
-            egui::Color32::from_rgb(0x08, 0x91, 0xb2)
+            egui::Color32::from_rgb(0x16, 0x9a, 0xb8)
         };
         painter.rect_filled(bar_rect, 1.0, color);
     }
+
+    // Center line
+    painter.line_segment(
+        [
+            egui::pos2(rect.left(), mid_y),
+            egui::pos2(rect.right(), mid_y),
+        ],
+        egui::Stroke::new(1.0, egui::Color32::from_white_alpha(20)),
+    );
 
     // Label
     painter.text(
         rect.center() + egui::vec2(0.0, -rect.height() * 0.4),
         egui::Align2::CENTER_CENTER,
-        "🎵 AUDIO",
-        egui::FontId::proportional(12.0),
-        theme::TEXT_TERTIARY,
+        "AUDIO",
+        egui::FontId::proportional(10.0),
+        egui::Color32::from_white_alpha(40),
     );
 }
 

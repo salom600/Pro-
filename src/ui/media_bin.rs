@@ -61,11 +61,12 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                 if assets.is_empty() {
                     ui.add_space(40.0);
                     ui.vertical_centered(|ui| {
-                        ui.label(
-                            egui::RichText::new("📂")
-                                .size(36.0)
-                                .color(theme::TEXT_TERTIARY),
+                        // Custom-drawn folder icon
+                        let (icon_rect, _) = ui.allocate_exact_size(
+                            egui::Vec2::new(48.0, 36.0),
+                            egui::Sense::hover(),
                         );
+                        draw_folder_icon(ui.painter(), icon_rect, theme::TEXT_TERTIARY);
                         ui.add_space(8.0);
                         ui.label(
                             egui::RichText::new("No media imported")
@@ -135,18 +136,18 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                                 }
                             }
 
-                            // Kind icon overlay
-                            let icon = match asset.kind.as_str() {
-                                "video" => "🎬",
-                                "audio" => "🎵",
-                                "image" => "🖼",
-                                _ => "📄",
+                            // Kind label overlay
+                            let kind_label = match asset.kind.as_str() {
+                                "video" => "VID",
+                                "audio" => "AUD",
+                                "image" => "IMG",
+                                _ => "FILE",
                             };
                             ui.painter().text(
                                 thumb_rect.left_top() + egui::vec2(4.0, 4.0),
                                 egui::Align2::LEFT_TOP,
-                                icon,
-                                egui::FontId::proportional(9.0),
+                                kind_label,
+                                egui::FontId::proportional(8.0),
                                 egui::Color32::WHITE,
                             );
 
@@ -247,4 +248,34 @@ fn format_duration(s: f64) -> String {
     let m = (s / 60.0).floor() as u64;
     let sec = (s % 60.0).floor() as u64;
     format!("{m}:{sec:02}")
+}
+
+/// Draws a simple folder icon — a tab + body, like a file manager folder.
+fn draw_folder_icon(painter: &egui::Painter, rect: egui::Rect, color: egui::Color32) {
+    let w = rect.width();
+    let h = rect.height();
+    let x = rect.left();
+    let y = rect.top();
+
+    // Tab (top-left flap)
+    let tab = vec![
+        egui::pos2(x, y + 4.0),
+        egui::pos2(x + w * 0.35, y + 4.0),
+        egui::pos2(x + w * 0.45, y),
+        egui::pos2(x + w * 0.55, y),
+        egui::pos2(x + w * 0.55, y + 8.0),
+        egui::pos2(x, y + 8.0),
+    ];
+    painter.add(egui::Shape::convex_polygon(
+        tab,
+        color,
+        egui::Stroke::NONE,
+    ));
+
+    // Body
+    let body = egui::Rect::from_min_max(
+        egui::pos2(x, y + 8.0),
+        egui::pos2(x + w, y + h),
+    );
+    painter.rect_filled(body, 2.0, color);
 }

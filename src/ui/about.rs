@@ -22,11 +22,34 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
         .show(ctx, |ui| {
             ui.add_space(12.0);
             ui.vertical_centered(|ui| {
-                ui.label(
-                    egui::RichText::new("◆")
-                        .color(theme::ACCENT_INDIGO)
-                        .size(36.0),
+                // Custom-drawn logo (same as titlebar)
+                let (logo_rect, _) = ui.allocate_exact_size(
+                    egui::Vec2::new(48.0, 48.0),
+                    egui::Sense::hover(),
                 );
+                let cx = logo_rect.center().x;
+                let cy = logo_rect.center().y;
+                let s = logo_rect.width() * 0.4;
+                let outer = vec![
+                    egui::pos2(cx - s * 0.7, cy - s),
+                    egui::pos2(cx - s * 0.7, cy + s),
+                    egui::pos2(cx + s, cy),
+                ];
+                ui.painter().add(egui::Shape::convex_polygon(
+                    outer,
+                    theme::ACCENT,
+                    egui::Stroke::NONE,
+                ));
+                let inner = vec![
+                    egui::pos2(cx - s * 0.3, cy - s * 0.5),
+                    egui::pos2(cx - s * 0.3, cy + s * 0.5),
+                    egui::pos2(cx + s * 0.4, cy),
+                ];
+                ui.painter().add(egui::Shape::convex_polygon(
+                    inner,
+                    theme::BG_PANEL,
+                    egui::Stroke::NONE,
+                ));
                 ui.add_space(8.0);
                 ui.label(
                     egui::RichText::new("Pro Video Editor")

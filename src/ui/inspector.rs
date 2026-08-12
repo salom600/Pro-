@@ -40,19 +40,20 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
         let Some((clip, track_name)) = clip_data else {
             ui.add_space(40.0);
             ui.vertical_centered(|ui| {
-                ui.label(
-                    egui::RichText::new("⚙")
-                        .size(32.0)
-                        .color(theme::TEXT_TERTIARY),
+                // Custom-drawn settings/sliders icon
+                let (icon_rect, _) = ui.allocate_exact_size(
+                    egui::Vec2::new(40.0, 40.0),
+                    egui::Sense::hover(),
                 );
+                draw_sliders_icon(ui.painter(), icon_rect, theme::TEXT_TERTIARY);
                 ui.add_space(8.0);
                 ui.label(
-                    egui::RichText::new("Select a clip")
+                    egui::RichText::new("No clip selected")
                         .color(theme::TEXT_TERTIARY)
                         .size(12.0),
                 );
                 ui.label(
-                    egui::RichText::new("to edit its properties")
+                    egui::RichText::new("Select a clip to edit its properties")
                         .color(theme::TEXT_TERTIARY)
                         .size(10.0),
                 );
@@ -200,3 +201,30 @@ fn slider_field(ui: &mut egui::Ui, label: &str, value: f64, min: f64, max: f64, 
 // Suppress unused-import warnings for things used only in type signatures.
 #[allow(dead_code)]
 fn _suppress(_c: Clip, _t: ClipTransform) {}
+
+/// Draws a sliders/mixer icon — three horizontal lines with knobs.
+fn draw_sliders_icon(painter: &egui::Painter, rect: egui::Rect, color: egui::Color32) {
+    let cx = rect.center().x;
+    let cy = rect.center().y;
+    let w = rect.width() * 0.7;
+    let line_h = 2.0;
+    let knob_r = 4.0;
+
+    // Three horizontal lines at different y positions
+    for i in 0..3 {
+        let y = cy - 10.0 + (i as f32 * 10.0);
+        let line_rect = egui::Rect::from_center_size(
+            egui::pos2(cx, y),
+            egui::Vec2::new(w, line_h),
+        );
+        painter.rect_filled(line_rect, 1.0, color);
+
+        // Knob at different x positions per line
+        let knob_x = cx - w * 0.3 + (i as f32 * w * 0.3);
+        painter.circle_filled(
+            egui::pos2(knob_x, y),
+            knob_r,
+            color,
+        );
+    }
+}
