@@ -8,7 +8,6 @@ use eframe::egui;
 
 use crate::app::ProApp;
 use crate::theme;
-use crate::ui::icons;
 
 const HEADER_HEIGHT: f32 = 28.0;
 const FOOTER_HEIGHT: f32 = 24.0;
@@ -79,6 +78,19 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
             .rect_filled(divider_rect, 0.0, theme::BORDER_SUBTLE);
 
         // ── Program Monitor (right) ──
+        // Pre-compute the program info tuple so we can pass it as a reference.
+        let program_display = program_info.as_ref().map(|(name, kind, w, h, fps, _)| {
+            (
+                name.clone(),
+                format!("{:?}", kind).to_lowercase(),
+                String::new(),
+                *w,
+                *h,
+                *fps,
+                0.0_f64,
+            )
+        });
+
         ui.allocate_ui_with_layout(
             egui::Vec2::new(half_w, available.y),
             egui::Layout::top_down(egui::Align::LEFT),
@@ -86,9 +98,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                 monitor_panel(
                     ui,
                     "PROGRAM",
-                    program_info.as_ref().map(|(name, kind, w, h, fps, _)| {
-                        (name.clone(), format!("{:?}", kind).to_lowercase(), String::new(), *w, *h, *fps, 0.0)
-                    }),
+                    program_display.as_ref(),
                     program_texture.as_ref(),
                     true,
                     playhead,

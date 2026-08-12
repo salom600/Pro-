@@ -81,10 +81,14 @@ fn probe_with_ffmpeg(path: &str) -> anyhow::Result<MediaProbe> {
 
     ffmpeg::init()?;
     let ctx = ffmpeg::format::input(path)?;
-    let duration = ctx
-        .duration()
-        .map(|d| d as f64 / f64::from(ffmpeg::ffi::AV_TIME_BASE))
-        .unwrap_or(0.0);
+
+    // In ffmpeg-next v7, duration() returns i64 directly (not Option).
+    let duration_us = ctx.duration();
+    let duration = if duration_us > 0 {
+        duration_us as f64 / 1_000_000.0
+    } else {
+        0.0
+    };
 
     let mut video = None;
     let mut audio = None;
@@ -102,26 +106,27 @@ fn probe_with_ffmpeg(path: &str) -> anyhow::Result<MediaProbe> {
     }
 
     let (width, height, fps, codec) = if let Some((stream, params)) = video {
-        let fps = stream
-            .avg_frame_rate()
-            .and_then(|r| {
-                if r.denominator() == 0 {
-                    None
-                } else {
-                    Some(r.numerator() as f64 / r.denominator() as f64)
-                }
-            })
-            .or_else(|| {
-                stream.frame_rate().and_then(|r| {
-                    if r.denominator() == 0 {
-                        None
-                    } else {
-                        Some(r.numerator() as f64 / r.denominator() as f64)
-                    }
-                })
-            });
-        let codec = params.id().map(|id| format!("{id:?}"));
-        (Some(params.width()), Some(params.height()), fps, codec)
+        // In ffmpeg-next v7, we need to get the video parameters via the
+        // codec context. The `Parameters` struct doesn't expose width/height
+        // directly — we access them through the decoder context.
+        let ctx_decoder = ffmpeg::codec::context::Context::from_parameters(params)?;
+        let decoder = ctx_decoder.decoder().video()?;
+
+        let w = decoder.width();
+        let h = decoder.height();
+
+        // avg_frame_rate() returns Rational directly in v7.
+        let r = stream.avg_frame_rate();
+        let fps_val = if r.denominator() != 0 {
+            Some(r.numerator() as f64 / r.denominator() as f64)
+        } else {
+            None
+        };
+
+        // params.id() returns Id directly in v7.
+        let codec_name = format!("{:?}", params.id());
+
+        (Some(w), Some(h), fps_val, Some(codec_name))
     } else {
         (None, None, None, None)
     };
@@ -150,7 +155,9 @@ fn probe_by_extension(path: &str) -> MediaProbe {
         .map(|e| e.to_string_lossy().to_lowercase())
         .unwrap_or_default();
 
-    let video_exts = ["mp4", "mov", "mkv", "avi", "webm", "m4v", "mpg", "mpeg", "ts"];
+    let video_exts = [
+        "mp4", "mov", "mkv", "avi", "webm", "m4v", "mpg", "mpeg", "ts",
+    ];
     let audio_exts = ["mp3", "wav", "aac", "flac", "ogg", "m4a", "wma", "opus"];
     let image_exts = ["png", "jpg", "jpeg", "bmp", "webp", "gif", "tiff"];
 

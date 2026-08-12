@@ -43,14 +43,14 @@ fn extract_with_ffmpeg(source: &str, thumb_path: &Path) -> anyhow::Result<()> {
         ffmpeg::codec::context::Context::from_parameters(input_stream.parameters())?;
     let mut decoder = context_decoder.decoder().video()?;
 
-    let mut scaler = ffmpeg::software::scaling::context::Context::get(
+    let mut scaler = ffmpeg::software::scaling::Context::get(
         decoder.format(),
         decoder.width(),
         decoder.height(),
         ffmpeg::format::Pixel::RGB24,
         decoder.width(),
         decoder.height(),
-        ffmpeg::software::scaling::flags::BILINEAR,
+        ffmpeg::software::scaling::Flags::BILINEAR,
     )?;
 
     let mut frame_index = 0u32;

@@ -133,7 +133,7 @@ mod ffmpeg_decoder {
     /// Wraps an FFmpeg input + decoder + scaler for a single video file.
     /// Can seek to arbitrary timestamps and decode the nearest frame.
     pub struct VideoDecoder {
-        ictx: ffmpeg::format::input::Input,
+        ictx: ffmpeg::format::context::Input,
         stream_index: usize,
         decoder: ffmpeg::decoder::Video,
         scaler: ffmpeg::software::scaling::Context,
@@ -172,7 +172,7 @@ mod ffmpeg_decoder {
                 ffmpeg::format::Pixel::RGBA,
                 width,
                 height,
-                ffmpeg::software::scaling::flags::BILINEAR,
+                ffmpeg::software::scaling::Flags::BILINEAR,
             )?;
 
             Ok(Self {

@@ -89,8 +89,13 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           brew install ffmpeg
-          echo "FFMPEG_DIR=$(brew --prefix ffmpeg)" >> $GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$(brew --prefix ffmpeg)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
+          BREW_PREFIX="$(brew --prefix ffmpeg)"
+          echo "FFMPEG_DIR=${BREW_PREFIX}" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=${BREW_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}" >> $GITHUB_ENV
+          echo "LIBRARY_PATH=${BREW_PREFIX}/lib:${LIBRARY_PATH}" >> $GITHUB_ENV
+          echo "C_INCLUDE_PATH=${BREW_PREFIX}/include:${C_INCLUDE_PATH}" >> $GITHUB_ENV
+          echo "CPLUS_INCLUDE_PATH=${BREW_PREFIX}/include:${CPLUS_INCLUDE_PATH}" >> $GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I${BREW_PREFIX}/include" >> $GITHUB_ENV
 
       - name: Build (release)
         shell: bash
