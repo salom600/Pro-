@@ -126,7 +126,7 @@ fn monitor_panel(
                 let (draw_w, draw_h) = if img_aspect > rect_aspect {
                     (rect.width(), rect.width() / img_aspect)
                 } else {
-                    (rect.height() * img_aspect, rect.height()),
+                    (rect.height() * img_aspect, rect.height())
                 };
                 let draw_rect = egui::Rect::from_center_size(
                     rect.center(),

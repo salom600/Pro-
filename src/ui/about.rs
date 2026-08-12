@@ -65,7 +65,7 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                         .size(10.0),
                 );
                 ui.label(
-                    egui::RichText::new(format!("Rust edition: {}", env!("CARGO_PKG_EDITION")))
+                    egui::RichText::new("Rust edition: 2021")
                         .color(theme::TEXT_TERTIARY)
                         .monospace()
                         .size(10.0),
