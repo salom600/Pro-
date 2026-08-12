@@ -11,6 +11,8 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
         return;
     }
 
+    let mut should_close = false;
+
     egui::Window::new("About Pro")
         .open(&mut open)
         .resizable(false)
@@ -72,10 +74,13 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                 );
                 ui.add_space(12.0);
                 if ui.button("Close").clicked() {
-                    open = false;
+                    should_close = true;
                 }
             });
         });
 
+    if should_close {
+        open = false;
+    }
     app.editor.write().about_open = open;
 }
