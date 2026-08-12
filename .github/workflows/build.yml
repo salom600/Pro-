@@ -12,6 +12,7 @@ env:
   CARGO_INCREMENTAL: "0"
   CARGO_NET_RETRY: "10"
   RUSTUP_MAX_RETRIES: "10"
+  RUST_BACKTRACE: "1"
 
 jobs:
   build:
@@ -24,29 +25,27 @@ jobs:
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
             label: linux-x64
-            bundles: "--bundles deb"
+            artifact_name: pro-video-editor
+            artifact_ext: ""
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x64
-            bundles: ""
+            artifact_name: pro-video-editor.exe
+            artifact_ext: ".exe"
           - os: macos-14
             target: aarch64-apple-darwin
             label: macos-arm64
-            bundles: ""
+            artifact_name: pro-video-editor
+            artifact_ext: ""
           - os: macos-13
             target: x86_64-apple-darwin
             label: macos-x64
-            bundles: ""
+            artifact_name: pro-video-editor
+            artifact_ext: ""
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-          cache: npm
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -59,7 +58,7 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            src-tauri/target
+            target
           key: cargo-${{ matrix.label }}-${{ hashFiles('**/Cargo.toml') }}
           restore-keys: |
             cargo-${{ matrix.label }}-
@@ -69,36 +68,57 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libwebkit2gtk-4.1-dev \
-            librsvg2-dev \
-            patchelf \
             libgtk-3-dev \
-            libayatana-appindicator3-dev
+            libxcb-render0-dev \
+            libxcb-shape0-dev \
+            libxcb-xfixes0-dev \
+            libxkbcommon-dev \
+            libssl-dev \
+            libgl1-mesa-dev \
+            libegl1-mesa-dev
 
-      - name: Install npm dependencies
-        run: npm install
+      - name: Build (release)
+        run: cargo build --release --target ${{ matrix.target }}
 
-      - name: Build frontend
-        run: npm run build
+      - name: Package binary (Unix)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir -p package
+          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} package/
+          cp README.md LICENSE package/ 2>/dev/null || true
+          tar czf pro-video-editor-${{ matrix.label }}.tar.gz -C package .
+          ls -la pro-video-editor-${{ matrix.label }}.tar.gz
 
-      - name: Build Tauri app
-        run: npx tauri build --target ${{ matrix.target }} ${{ matrix.bundles }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Package binary (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path package
+          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.artifact_name }}" "package/"
+          Copy-Item "README.md" "package/" -ErrorAction SilentlyContinue
+          Copy-Item "LICENSE" "package/" -ErrorAction SilentlyContinue
+          Compress-Archive -Path "package/*" -DestinationPath "pro-video-editor-${{ matrix.label }}.zip"
+          Get-ChildItem "pro-video-editor-${{ matrix.label }}.zip"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
-        if: always()
         with:
           name: pro-video-editor-${{ matrix.label }}
           path: |
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.AppImage
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
-            src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
+            pro-video-editor-${{ matrix.label }}.tar.gz
+            pro-video-editor-${{ matrix.label }}.zip
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Build summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## Build — ${{ matrix.label }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          ls -la target/${{ matrix.target }}/release/pro-video-editor* 2>/dev/null || echo "No binary found"
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Binary size: $(du -h target/${{ matrix.target }}/release/pro-video-editor* 2>/dev/null | head -1 | cut -f1 || echo 'unknown')"
 
   release:
     name: Release
@@ -115,7 +135,7 @@ jobs:
           path: artifacts
 
       - name: List artifacts
-        run: find artifacts -type f | head -50
+        run: find artifacts -type f | head -20
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -124,20 +144,16 @@ jobs:
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
           files: |
-            artifacts/**/*.deb
-            artifacts/**/*.AppImage
-            artifacts/**/*.msi
-            artifacts/**/*.exe
-            artifacts/**/*.dmg
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
           body: |
             ## Pro Video Editor ${{ github.ref_name }}
 
-            Cross-platform installers for Windows, macOS, and Linux.
+            Native cross-platform video editor — pure Rust + egui + wgpu. No browser.
 
             ### Install
-            - **Windows**: download the `.msi` and run it.
-            - **macOS**: download the `.dmg`, open it, and drag **Pro Video Editor** to Applications.
-            - **Linux**: install the `.deb` with `sudo dpkg -i pro-video-editor_*.deb`,
-              or make the `.AppImage` executable and double-click.
+            - **Windows**: download `.zip`, extract, run `pro-video-editor.exe`.
+            - **macOS**: download `.tar.gz`, extract, run `./pro-video-editor` (may need `xattr -dr com.apple.quarantine`).
+            - **Linux**: download `.tar.gz`, extract, run `./pro-video-editor`.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
