@@ -176,7 +176,6 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                     egui::FontId::monospace(12.0),
                     theme::ACCENT_CYAN,
                 );
-                ui.advance_cursor_after_rects();
 
                 // ── Right side: zoom ──
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {

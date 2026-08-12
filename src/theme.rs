@@ -34,12 +34,12 @@ pub const ACCENT_ROSE: Color32 = Color32::from_rgb(0xfb, 0x71, 0x85);
 pub const TRACK_VIDEO: Color32 = Color32::from_rgb(0x4f, 0x46, 0xe5);
 pub const TRACK_AUDIO: Color32 = Color32::from_rgb(0x08, 0x91, 0xb2);
 
-pub const CLIP_VIDEO: Color32 = Color32::from_rgb(0x6366f1);
-pub const CLIP_VIDEO_LIGHT: Color32 = Color32::from_rgb(0x818cf8);
-pub const CLIP_AUDIO: Color32 = Color32::from_rgb(0x14b8a6);
-pub const CLIP_AUDIO_LIGHT: Color32 = Color32::from_rgb(0x2dd4bf);
-pub const CLIP_IMAGE: Color32 = Color32::from_rgb(0xf59e0b);
-pub const CLIP_TEXT: Color32 = Color32::from_rgb(0xec4899);
+pub const CLIP_VIDEO: Color32 = Color32::from_rgb(0x63, 0x66, 0xf1);
+pub const CLIP_VIDEO_LIGHT: Color32 = Color32::from_rgb(0x81, 0x8c, 0xf8);
+pub const CLIP_AUDIO: Color32 = Color32::from_rgb(0x14, 0xb8, 0xa6);
+pub const CLIP_AUDIO_LIGHT: Color32 = Color32::from_rgb(0x2d, 0xd4, 0xbf);
+pub const CLIP_IMAGE: Color32 = Color32::from_rgb(0xf5, 0x9e, 0x0b);
+pub const CLIP_TEXT: Color32 = Color32::from_rgb(0xec, 0x48, 0x99);
 
 // ── Apply theme to egui context ───────────────────────────────────────────
 pub fn apply(ctx: &Context) {

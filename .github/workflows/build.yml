@@ -80,12 +80,17 @@ jobs:
             libavformat-dev \
             libavutil-dev \
             libavfilter-dev \
+            libavdevice-dev \
             libswscale-dev \
-            libswresample-dev
+            libswresample-dev \
+            pkg-config
 
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
-        run: brew install ffmpeg
+        run: |
+          brew install ffmpeg
+          echo "FFMPEG_DIR=$(brew --prefix ffmpeg)" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$(brew --prefix ffmpeg)/lib/pkgconfig:$PKG_CONFIG_PATH" >> $GITHUB_ENV
 
       - name: Build (release)
         shell: bash

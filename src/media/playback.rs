@@ -9,9 +9,10 @@
 //! placeholder instead. This keeps the binary portable on platforms where
 //! FFmpeg system libraries are unavailable.
 
-use std::collections::HashMap;
-
 use parking_lot::Mutex;
+
+#[cfg(feature = "ffmpeg")]
+use std::collections::HashMap;
 
 /// A decoded video frame — RGBA pixel data ready for GPU upload.
 #[derive(Clone)]

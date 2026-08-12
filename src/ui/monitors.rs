@@ -7,7 +7,6 @@
 use eframe::egui;
 
 use crate::app::ProApp;
-use crate::state::clip::ClipKind;
 use crate::theme;
 use crate::ui::icons;
 
@@ -386,7 +385,3 @@ fn format_tc(seconds: f64) -> String {
     let f = total_frames % 30;
     format!("{h:02}:{m:02}:{s:02}:{f:02}")
 }
-
-// Suppress unused import warning.
-#[allow(dead_code)]
-fn _suppress(_c: ClipKind, _i: icons) {}
