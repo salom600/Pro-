@@ -93,9 +93,18 @@ jobs:
           echo "FFMPEG_DIR=${BREW_PREFIX}" >> $GITHUB_ENV
           echo "PKG_CONFIG_PATH=${BREW_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH}" >> $GITHUB_ENV
           echo "LIBRARY_PATH=${BREW_PREFIX}/lib:${LIBRARY_PATH}" >> $GITHUB_ENV
-          echo "C_INCLUDE_PATH=${BREW_PREFIX}/include:${C_INCLUDE_PATH}" >> $GITHUB_ENV
-          echo "CPLUS_INCLUDE_PATH=${BREW_PREFIX}/include:${CPLUS_INCLUDE_PATH}" >> $GITHUB_ENV
-          echo "BINDGEN_EXTRA_CLANG_ARGS=-I${BREW_PREFIX}/include" >> $GITHUB_ENV
+          # ffmpeg-sys-next's bindgen hardcodes /usr/include paths on macOS.
+          # Create a symlink so the headers resolve.
+          sudo mkdir -p /usr/include
+          sudo ln -sf ${BREW_PREFIX}/include/libavcodec /usr/include/libavcodec
+          sudo ln -sf ${BREW_PREFIX}/include/libavformat /usr/include/libavformat
+          sudo ln -sf ${BREW_PREFIX}/include/libavutil /usr/include/libavutil
+          sudo ln -sf ${BREW_PREFIX}/include/libavfilter /usr/include/libavfilter
+          sudo ln -sf ${BREW_PREFIX}/include/libavdevice /usr/include/libavdevice
+          sudo ln -sf ${BREW_PREFIX}/include/libswscale /usr/include/libswscale
+          sudo ln -sf ${BREW_PREFIX}/include/libswresample /usr/include/libswresample
+          # Also set bindgen args as a fallback.
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I${BREW_PREFIX}/include -I/usr/include" >> $GITHUB_ENV
 
       - name: Build (release)
         shell: bash

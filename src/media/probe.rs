@@ -106,9 +106,9 @@ fn probe_with_ffmpeg(path: &str) -> anyhow::Result<MediaProbe> {
     }
 
     let (width, height, fps, codec) = if let Some((stream, params)) = video {
-        // In ffmpeg-next v7, we need to get the video parameters via the
-        // codec context. The `Parameters` struct doesn't expose width/height
-        // directly — we access them through the decoder context.
+        // Extract codec id BEFORE moving params into from_parameters.
+        let codec_name = format!("{:?}", params.id());
+
         let ctx_decoder = ffmpeg::codec::context::Context::from_parameters(params)?;
         let decoder = ctx_decoder.decoder().video()?;
 
@@ -123,15 +123,13 @@ fn probe_with_ffmpeg(path: &str) -> anyhow::Result<MediaProbe> {
             None
         };
 
-        // params.id() returns Id directly in v7.
-        let codec_name = format!("{:?}", params.id());
-
         (Some(w), Some(h), fps_val, Some(codec_name))
     } else {
         (None, None, None, None)
     };
 
-    let kind = match (video.is_some(), audio.is_some()) {
+    let has_video = video.is_some();
+    let kind = match (has_video, audio.is_some()) {
         (true, _) => ProbeKind::Video,
         (false, true) => ProbeKind::Audio,
         (false, false) => ProbeKind::Unknown,
