@@ -212,13 +212,14 @@ fn monitor_panel(
     } else if let Some((_, kind, _, _, _, _, _)) = asset_info {
         // No texture available — show appropriate placeholder.
         if playback_available && (kind == "video" || kind == "image") {
-            draw_placeholder(ui, display_rect, "DECODING", "Loading video frame...");
+            draw_placeholder(ui, display_rect, "DECODING", "Loading video frame...", theme::TEXT_TERTIARY);
         } else if !playback_available && kind == "video" {
             draw_placeholder(
                 ui,
                 display_rect,
                 "NO DECODER",
                 "FFmpeg not available in this build",
+                theme::TEXT_TERTIARY,
             );
         } else if kind == "audio" {
             draw_audio_waveform(ui, display_rect);
@@ -228,6 +229,7 @@ fn monitor_panel(
                 display_rect,
                 "NO PREVIEW",
                 "Preview not available for this format",
+                theme::TEXT_TERTIARY,
             );
         }
     } else {

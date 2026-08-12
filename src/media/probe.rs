@@ -105,8 +105,8 @@ fn probe_with_ffmpeg(path: &str) -> anyhow::Result<MediaProbe> {
         }
     }
 
-    let (width, height, fps, codec) = if let Some((stream, ref params)) = video {
-        // Extract codec id BEFORE moving params into from_parameters.
+    let (width, height, fps, codec, has_video) = if let Some((ref stream, ref params)) = video {
+        // Extract codec id.
         let codec_name = format!("{:?}", params.id());
 
         let ctx_decoder = ffmpeg::codec::context::Context::from_parameters(params.clone())?;
@@ -115,7 +115,6 @@ fn probe_with_ffmpeg(path: &str) -> anyhow::Result<MediaProbe> {
         let w = decoder.width();
         let h = decoder.height();
 
-        // avg_frame_rate() returns Rational directly in v7.
         let r = stream.avg_frame_rate();
         let fps_val = if r.denominator() != 0 {
             Some(r.numerator() as f64 / r.denominator() as f64)
@@ -123,12 +122,11 @@ fn probe_with_ffmpeg(path: &str) -> anyhow::Result<MediaProbe> {
             None
         };
 
-        (Some(w), Some(h), fps_val, Some(codec_name))
+        (Some(w), Some(h), fps_val, Some(codec_name), true)
     } else {
-        (None, None, None, None)
+        (None, None, None, None, false)
     };
 
-    let has_video = video.is_some();
     let kind = match (has_video, audio.is_some()) {
         (true, _) => ProbeKind::Video,
         (false, true) => ProbeKind::Audio,
