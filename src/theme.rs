@@ -40,14 +40,19 @@ pub fn apply(ctx: &Context) {
     // Spacing — dense, pro-tool feel.
     style.spacing.item_spacing = Vec2::new(8.0, 6.0);
     style.spacing.button_padding = Vec2::new(8.0, 4.0);
-    style.spacing.window_margin = style.spacing.window_margin * 0.7;
+    style.spacing.window_margin = egui::Margin {
+        left: 8.0,
+        right: 8.0,
+        top: 6.0,
+        bottom: 6.0,
+    };
     style.spacing.indent = 14.0;
     style.spacing.interact_size = Vec2::new(64.0, 22.0);
 
     // Rounded corners — modern but not bubbly.
     style.visuals.window_rounding = Rounding::same(6.0);
     style.visuals.menu_rounding = Rounding::same(6.0);
-    style.visuals.button_rounding = Rounding::same(4.0);
+    // In egui 0.29, button rounding lives on each widget state.
     style.visuals.widgets.noninteractive.rounding = Rounding::same(4.0);
     style.visuals.widgets.inactive.rounding = Rounding::same(4.0);
     style.visuals.widgets.hovered.rounding = Rounding::same(4.0);

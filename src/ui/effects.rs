@@ -69,7 +69,7 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                     let frame = egui::Frame::group(ui.style())
                         .fill(theme::BG_ELEVATED)
                         .stroke(egui::Stroke::new(1.0, theme::BORDER_SUBTLE))
-                        .inner_margin(egui::Margin::same(6));
+                        .inner_margin(egui::Margin::same(6.0));
 
                     let resp = frame.show(ui, |ui| {
                         ui.set_min_width(ui.available_width() - 8.0);

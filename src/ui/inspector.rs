@@ -166,15 +166,12 @@ fn number_field(
         );
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let mut v = value;
-            ui.add(
+            ui.add_sized(
+                egui::Vec2::new(90.0, 18.0),
                 egui::DragValue::new(&mut v)
                     .speed(step)
-                    .fixed_decimals(2)
-                    .desired_width(80.0),
+                    .fixed_decimals(2),
             );
-            // Note: writing back to state requires a borrow on app, which we can't
-            // do here without refactoring. For now, this is display-only — full
-            // mutation lands in the next iteration.
         });
     });
 }
@@ -188,12 +185,12 @@ fn slider_field(ui: &mut egui::Ui, label: &str, value: f64, min: f64, max: f64, 
         );
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let mut v = value;
-            ui.add(
+            ui.add_sized(
+                egui::Vec2::new(130.0, 18.0),
                 egui::Slider::new(&mut v, min..=max)
                     .step_by(step)
                     .fixed_decimals(2)
-                    .show_value(true)
-                    .desired_width(120.0),
+                    .show_value(true),
             );
         });
     });

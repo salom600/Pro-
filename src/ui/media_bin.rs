@@ -111,11 +111,15 @@ pub fn render(ui: &mut egui::Ui, app: &mut ProApp) {
                                 if let Ok(img) = image::open(thumb_path) {
                                     let rgba = img.to_rgba8();
                                     let (w, h) = rgba.dimensions();
+                                    let pixels: Vec<egui::Color32> = rgba
+                                        .pixels()
+                                        .map(|p| egui::Color32::from_rgba_premultiplied(p.0[0], p.0[1], p.0[2], p.0[3]))
+                                        .collect();
                                     let texture_id = ui.ctx().load_texture(
                                         format!("thumb-{}", asset.id),
                                         egui::ColorImage {
                                             size: [w as usize, h as usize],
-                                            pixels: rgba.into_raw(),
+                                            pixels,
                                         },
                                         egui::TextureOptions::LINEAR,
                                     );

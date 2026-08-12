@@ -185,7 +185,8 @@ impl ProApp {
 
             // Delete selected clip
             if i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace) {
-                if let Some(id) = e.selected_clip_id.clone() {
+                let selected = e.selected_clip_id.clone();
+                if let Some(id) = selected {
                     drop(e);
                     self.remove_clip(&id);
                 }
@@ -266,37 +267,27 @@ impl ProApp {
         track_id: &str,
         timeline_start: f64,
     ) -> Result<(), String> {
-        let (clip_id, name) = {
+        // Snapshot the media asset info we need, then release the read lock.
+        let (name, kind, duration) = {
             let p = self.project.read();
             let asset = p.find_media(media_id).ok_or("Media not found")?;
             let track = p.find_track(track_id).ok_or("Track not found")?;
             if track.locked {
                 return Err(format!("Track {} is locked", track.name));
             }
-            let kind = crate::state::clip::ClipKind::from_str(&asset.kind)
-                .unwrap_or(crate::state::clip::ClipKind::Video);
-            let mut clip = crate::state::clip::Clip::new(
-                media_id,
-                &asset.name,
-                kind,
+            (
+                asset.name.clone(),
+                crate::state::clip::ClipKind::from_str(&asset.kind)
+                    .unwrap_or(crate::state::clip::ClipKind::Video),
                 asset.duration_seconds.max(1.0),
-            );
-            clip.timeline_start = timeline_start;
-            (clip.id.clone(), clip.name.clone())
+            )
         };
 
-        // Re-acquire and actually push.
+        // Acquire write lock and push the new clip.
         let mut p = self.project.write();
         let track = p.find_track_mut(track_id).ok_or("Track not found")?;
-        let kind = crate::state::clip::ClipKind::from_str(
-            &p.find_media(media_id).map(|a| a.kind.clone()).unwrap_or_default(),
-        )
-        .unwrap_or(crate::state::clip::ClipKind::Video);
-        let asset_dur = p.find_media(media_id).map(|a| a.duration_seconds).unwrap_or(5.0);
-        let mut clip =
-            crate::state::clip::Clip::new(media_id, &name, kind, asset_dur.max(1.0));
+        let mut clip = crate::state::clip::Clip::new(media_id, &name, kind, duration);
         clip.timeline_start = timeline_start;
-        clip.id = clip_id;
         track.clips.push(clip);
         p.touch();
         drop(p);

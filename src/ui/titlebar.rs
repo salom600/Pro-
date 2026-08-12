@@ -78,18 +78,18 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                 });
 
                 // View menu
-                let show_bin = app.editor.read().show_media_bin;
-                let show_inspector = app.editor.read().show_inspector;
-                let show_effects = app.editor.read().show_effects;
                 ui.menu_button("View", |ui| {
-                    if ui.checkbox(&mut app.editor.write().show_media_bin, "Media Bin").changed() {
-                        let _ = show_bin;
+                    let mut show_bin = app.editor.read().show_media_bin;
+                    let mut show_inspector = app.editor.read().show_inspector;
+                    let mut show_effects = app.editor.read().show_effects;
+                    if ui.checkbox(&mut show_bin, "Media Bin").changed() {
+                        app.editor.write().show_media_bin = show_bin;
                     }
-                    if ui.checkbox(&mut app.editor.write().show_inspector, "Inspector").changed() {
-                        let _ = show_inspector;
+                    if ui.checkbox(&mut show_inspector, "Inspector").changed() {
+                        app.editor.write().show_inspector = show_inspector;
                     }
-                    if ui.checkbox(&mut app.editor.write().show_effects, "Effects").changed() {
-                        let _ = show_effects;
+                    if ui.checkbox(&mut show_effects, "Effects").changed() {
+                        app.editor.write().show_effects = show_effects;
                     }
                 });
 

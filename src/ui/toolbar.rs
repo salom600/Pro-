@@ -26,10 +26,11 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                 let active = app.editor.read().active_tool;
                 for tool in tools {
                     let selected = active == tool;
-                    let btn = egui::SelectableLabel::new(selected, tool.icon())
-                        .size(15.0)
-                        .desired_width([32.0]);
-                    let resp = ui.add(btn);
+                    let btn = egui::SelectableLabel::new(selected, tool.icon());
+                    let resp = ui.add_sized(
+                        egui::Vec2::new(32.0, 22.0),
+                        btn,
+                    );
                     if resp.clicked() {
                         app.editor.write().active_tool = tool;
                     }
@@ -85,11 +86,11 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                             .size(10.0),
                     );
                     let mut new_zoom = zoom;
-                    ui.add(
+                    ui.add_sized(
+                        egui::Vec2::new(100.0, 16.0),
                         egui::Slider::new(&mut new_zoom, 10.0..=200.0)
                             .clamp_to_range(true)
-                            .fixed_decimals(0)
-                            .desired_width(100.0),
+                            .fixed_decimals(0),
                     )
                     .on_hover_text("Timeline zoom");
                     if (new_zoom - zoom).abs() > 0.01 {

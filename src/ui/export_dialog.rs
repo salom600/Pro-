@@ -20,7 +20,7 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
         .default_height(560.0)
         .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
         .frame(
-            egui::Frame::window(ui_style(ctx))
+            egui::Frame::window(&egui::Style::default())
                 .fill(theme::BG_PANEL)
                 .stroke(egui::Stroke::new(1.0, theme::BORDER_STRONG)),
         )
@@ -28,8 +28,6 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
             ui.add_space(6.0);
 
             let presets = export_presets::all();
-            let mut selected = app.editor.read().selected_clip_id.clone();
-            let _ = selected;
 
             // Static-ish state stored in the editor (cheap hack for the
             // foundation release — full state machine lands later).
@@ -270,8 +268,4 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
         });
 
     app.editor.write().export_dialog_open = open;
-}
-
-fn ui_style(ctx: &egui::Context) -> egui::Style {
-    ctx.style()
 }
