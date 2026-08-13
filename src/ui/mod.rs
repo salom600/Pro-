@@ -7,6 +7,7 @@ pub mod icons;
 pub mod inspector;
 pub mod media_bin;
 pub mod monitors;
+pub mod settings_dialog;
 pub mod statusbar;
 pub mod timeline;
 pub mod titlebar;

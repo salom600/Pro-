@@ -135,6 +135,10 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
                             ui.close_menu();
                         }
                         ui.separator();
+                        if ui.button("Settings...").clicked() {
+                            app.editor.write().settings_open = true;
+                            ui.close_menu();
+                        }
                         if ui.button("About").clicked() {
                             app.editor.write().about_open = true;
                             ui.close_menu();

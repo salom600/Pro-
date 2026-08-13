@@ -34,6 +34,7 @@ pub struct EditorState {
     pub show_effects: bool,
     pub export_dialog_open: bool,
     pub about_open: bool,
+    pub settings_open: bool,
     pub media_search_query: String,
     pub media_view_mode: MediaViewMode,
     pub active_media_tab: MediaTab,

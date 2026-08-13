@@ -275,6 +275,9 @@ impl ProApp {
         if self.editor.read().about_open {
             ui::about::render(ctx, self);
         }
+        if self.editor.read().settings_open {
+            ui::settings_dialog::render(ctx, self);
+        }
     }
 }
 
@@ -390,12 +393,14 @@ impl ProApp {
 
     pub fn import_media(&mut self, path: String) {
         let probe = crate::media::probe::probe(&path);
+        // Use the full filename (with extension) like the reference: C0001.MP4
+        let name = std::path::Path::new(&path)
+            .file_name()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "Untitled".to_string());
         let asset = crate::state::project::MediaAsset {
             id: uuid::Uuid::new_v4().to_string(),
-            name: std::path::Path::new(&path)
-                .file_stem()
-                .map(|s| s.to_string_lossy().to_string())
-                .unwrap_or_else(|| "Untitled".to_string()),
+            name,
             path: path.clone(),
             kind: probe.kind.as_str().to_string(),
             duration_seconds: probe.duration,
@@ -406,6 +411,7 @@ impl ProApp {
         };
         self.project.write().add_media(asset);
         self.status_message = format!("Imported {}", path);
+        log::info!("Imported media: {}", path);
     }
 
     pub fn remove_media(&mut self, id: &str) {
@@ -449,6 +455,28 @@ impl ProApp {
         drop(p);
 
         self.status_message = "Clip added to timeline".to_string();
+        Ok(())
+    }
+
+    /// Creates a text clip on the specified track — supports all languages.
+    pub fn add_text_clip(&mut self, text: &str, track_id: &str, timeline_start: f64, duration: f64) -> Result<(), String> {
+        let mut p = self.project.write();
+        let track = p.find_track_mut(track_id).ok_or("Track not found")?;
+        if track.locked {
+            return Err(format!("Track {} is locked", track.name));
+        }
+        let media_id = format!("text-{}", uuid::Uuid::new_v4());
+        let mut clip = crate::state::clip::Clip::new(
+            &media_id,
+            text,
+            crate::state::clip::ClipKind::Text,
+            duration.max(1.0),
+        );
+        clip.timeline_start = timeline_start;
+        track.clips.push(clip);
+        p.touch();
+        drop(p);
+        self.status_message = format!("Text clip added: {}", text);
         Ok(())
     }
 
