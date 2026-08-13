@@ -1,70 +1,58 @@
-//! Visual theme — professional cinematic dark, like DaVinci Resolve / Premiere Pro.
-//!
-//! Carefully tuned contrast ratios, no gimmicky colors. Reads as a
-//! serious pro tool, not a toy.
+//! Professional theme matching CapCut-style NLE reference.
+//! Deep charcoal backgrounds, bright blue (#2d7ff9) accents.
 
 use eframe::egui::{Color32, Context, Rounding, Stroke, Vec2, Visuals};
 
-// ── Surfaces (very dark, slightly blue-tinted like real pro tools) ────────
-pub const BG_DEEPEST: Color32 = Color32::from_rgb(0x08, 0x09, 0x0c);
-pub const BG_BASE: Color32 = Color32::from_rgb(0x0c, 0x0d, 0x11);
-pub const BG_PANEL: Color32 = Color32::from_rgb(0x10, 0x11, 0x16);
-pub const BG_ELEVATED: Color32 = Color32::from_rgb(0x18, 0x1a, 0x21);
-pub const BG_HOVER: Color32 = Color32::from_rgb(0x22, 0x24, 0x2d);
-pub const BG_ACTIVE: Color32 = Color32::from_rgb(0x2c, 0x2e, 0x38);
+// ── Surfaces ──
+pub const BG_DEEPEST: Color32 = Color32::from_rgb(0x12, 0x12, 0x12);
+pub const BG_BASE: Color32 = Color32::from_rgb(0x1a, 0x1a, 0x1a);
+pub const BG_PANEL: Color32 = Color32::from_rgb(0x1e, 0x1e, 0x1e);
+pub const BG_ELEVATED: Color32 = Color32::from_rgb(0x2d, 0x2d, 0x2d);
+pub const BG_HOVER: Color32 = Color32::from_rgb(0x35, 0x35, 0x35);
+pub const BG_ACTIVE: Color32 = Color32::from_rgb(0x3a, 0x3a, 0x3a);
 
-// ── Borders (subtle) ──────────────────────────────────────────────────────
-pub const BORDER_SUBTLE: Color32 = Color32::from_rgb(0x1e, 0x20, 0x28);
-pub const BORDER_STRONG: Color32 = Color32::from_rgb(0x2e, 0x30, 0x3c);
+// ── Borders ──
+pub const BORDER_SUBTLE: Color32 = Color32::from_rgb(0x2a, 0x2a, 0x2a);
+pub const BORDER_STRONG: Color32 = Color32::from_rgb(0x3a, 0x3a, 0x3a);
 
-// ── Text (high contrast for long editing sessions) ────────────────────────
-pub const TEXT_PRIMARY: Color32 = Color32::from_rgb(0xf0, 0xf1, 0xf5);
-pub const TEXT_SECONDARY: Color32 = Color32::from_rgb(0xa8, 0xab, 0xb8);
-pub const TEXT_TERTIARY: Color32 = Color32::from_rgb(0x68, 0x6b, 0x78);
+// ── Text ──
+pub const TEXT_PRIMARY: Color32 = Color32::from_rgb(0xff, 0xff, 0xff);
+pub const TEXT_SECONDARY: Color32 = Color32::from_rgb(0x88, 0x88, 0x88);
+pub const TEXT_TERTIARY: Color32 = Color32::from_rgb(0x66, 0x66, 0x66);
 
-// ── Accents (used sparingly — one primary, others for status) ─────────────
-pub const ACCENT: Color32 = Color32::from_rgb(0x4d, 0x8f, 0xff); // pro blue
-pub const ACCENT_DIM: Color32 = Color32::from_rgb(0x35, 0x63, 0xb3);
-pub const ACCENT_CYAN: Color32 = Color32::from_rgb(0x22, 0xd3, 0xee);
-pub const ACCENT_EMERALD: Color32 = Color32::from_rgb(0x34, 0xd3, 0x99);
-pub const ACCENT_AMBER: Color32 = Color32::from_rgb(0xfb, 0xbf, 0x24);
-pub const ACCENT_ROSE: Color32 = Color32::from_rgb(0xfb, 0x71, 0x85);
+// ── Accents (bright blue like reference) ──
+pub const ACCENT: Color32 = Color32::from_rgb(0x2d, 0x7f, 0xf9);
+pub const ACCENT_DIM: Color32 = Color32::from_rgb(0x1a, 0x5a, 0xb8);
+pub const ACCENT_CYAN: Color32 = Color32::from_rgb(0x00, 0xd4, 0xff);
+pub const ACCENT_EMERALD: Color32 = Color32::from_rgb(0x4c, 0xaf, 0x50);
+pub const ACCENT_AMBER: Color32 = Color32::from_rgb(0xff, 0xc1, 0x07);
+pub const ACCENT_ROSE: Color32 = Color32::from_rgb(0xd6, 0x4a, 0x9c);
 pub const ACCENT_VIOLET: Color32 = Color32::from_rgb(0xa7, 0x8b, 0xfa);
 
-// Legacy aliases (keep old names working during transition)
+// Legacy aliases
 pub const ACCENT_INDIGO: Color32 = ACCENT;
 
-// ── Track / clip colors ───────────────────────────────────────────────────
-pub const TRACK_VIDEO: Color32 = Color32::from_rgb(0x3a, 0x5c, 0xb3);
-pub const TRACK_AUDIO: Color32 = Color32::from_rgb(0x2a, 0x7a, 0x8e);
+// ── Track / clip colors ──
+pub const TRACK_VIDEO: Color32 = Color32::from_rgb(0x4a, 0x6f, 0xa5);
+pub const TRACK_AUDIO: Color32 = Color32::from_rgb(0x2a, 0x7a, 0x4a);
 
-pub const CLIP_VIDEO: Color32 = Color32::from_rgb(0x4d, 0x8f, 0xff);
-pub const CLIP_VIDEO_LIGHT: Color32 = Color32::from_rgb(0x7a, 0xb0, 0xff);
-pub const CLIP_AUDIO: Color32 = Color32::from_rgb(0x22, 0xd3, 0xee);
-pub const CLIP_AUDIO_LIGHT: Color32 = Color32::from_rgb(0x67, 0xe8, 0xf9);
-pub const CLIP_IMAGE: Color32 = Color32::from_rgb(0xfb, 0xbf, 0x24);
-pub const CLIP_TEXT: Color32 = Color32::from_rgb(0xa7, 0x8b, 0xfa);
+pub const CLIP_VIDEO: Color32 = Color32::from_rgb(0x4a, 0x6f, 0xa5);
+pub const CLIP_VIDEO_LIGHT: Color32 = Color32::from_rgb(0x6a, 0x8f, 0xc5);
+pub const CLIP_AUDIO: Color32 = Color32::from_rgb(0x4c, 0xaf, 0x50);
+pub const CLIP_AUDIO_LIGHT: Color32 = Color32::from_rgb(0x6c, 0xcf, 0x70);
+pub const CLIP_IMAGE: Color32 = Color32::from_rgb(0xff, 0xc1, 0x07);
+pub const CLIP_TEXT: Color32 = Color32::from_rgb(0xd6, 0x4a, 0x9c);
 
-// ── Apply theme ───────────────────────────────────────────────────────────
 pub fn apply(ctx: &Context) {
     let mut style = (*ctx.style()).clone();
-
-    // Tight, professional spacing.
-    style.spacing.item_spacing = Vec2::new(6.0, 5.0);
-    style.spacing.button_padding = Vec2::new(10.0, 4.0);
-    style.spacing.window_margin = egui::Margin {
-        left: 6.0,
-        right: 6.0,
-        top: 5.0,
-        bottom: 5.0,
-    };
+    style.spacing.item_spacing = Vec2::new(6.0, 4.0);
+    style.spacing.button_padding = Vec2::new(8.0, 4.0);
+    style.spacing.window_margin = egui::Margin { left: 4.0, right: 4.0, top: 4.0, bottom: 4.0 };
     style.spacing.indent = 12.0;
-    style.spacing.interact_size = Vec2::new(56.0, 22.0);
+    style.spacing.interact_size = Vec2::new(48.0, 22.0);
     style.spacing.scroll = egui::style::ScrollStyle::solid();
-    style.spacing.scroll.bar_width = 10.0;
-    style.spacing.scroll.handle_min_length = 30.0;
+    style.spacing.scroll.bar_width = 8.0;
 
-    // Minimal rounding — pro tools use subtle radii.
     style.visuals.window_rounding = Rounding::same(4.0);
     style.visuals.menu_rounding = Rounding::same(4.0);
     style.visuals.widgets.noninteractive.rounding = Rounding::same(3.0);
@@ -81,23 +69,18 @@ pub fn apply(ctx: &Context) {
     visuals.selection.bg_fill = ACCENT_DIM;
     visuals.selection.stroke = Stroke::new(1.0, ACCENT);
 
-    // Widget state colors — restrained, professional.
     visuals.widgets.noninteractive.bg_fill = BG_ELEVATED;
     visuals.widgets.noninteractive.bg_stroke = Stroke::new(1.0, BORDER_SUBTLE);
     visuals.widgets.noninteractive.fg_stroke = Stroke::new(1.0, TEXT_SECONDARY);
-
     visuals.widgets.inactive.bg_fill = BG_ELEVATED;
     visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, BORDER_SUBTLE);
     visuals.widgets.inactive.fg_stroke = Stroke::new(1.0, TEXT_PRIMARY);
-
     visuals.widgets.hovered.bg_fill = BG_HOVER;
     visuals.widgets.hovered.bg_stroke = Stroke::new(1.0, ACCENT_DIM);
     visuals.widgets.hovered.fg_stroke = Stroke::new(1.0, TEXT_PRIMARY);
-
     visuals.widgets.active.bg_fill = ACCENT;
     visuals.widgets.active.bg_stroke = Stroke::new(1.0, ACCENT);
     visuals.widgets.active.fg_stroke = Stroke::new(1.0, TEXT_PRIMARY);
-
     visuals.widgets.open.bg_fill = BG_HOVER;
     visuals.widgets.open.bg_stroke = Stroke::new(1.0, ACCENT_DIM);
     visuals.widgets.open.fg_stroke = Stroke::new(1.0, TEXT_PRIMARY);

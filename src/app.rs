@@ -198,50 +198,42 @@ impl ProApp {
 // ── UI rendering ───────────────────────────────────────────────────────────
 impl ProApp {
     fn render_ui(&mut self, ctx: &egui::Context) {
+        // Top menu bar
         ui::titlebar::render(ctx, self);
 
-        // Transport bar (timecode + nav controls) — above the timeline
-        ui::transport_bar::render(ctx, self);
-
+        // Bottom status bar
         egui::TopBottomPanel::bottom("statusbar")
-            .exact_height(24.0)
+            .exact_height(22.0)
             .show(ctx, |ui| {
                 ui::statusbar::render(ui, self);
             });
 
-        // ── Left: vertical tool strip ──
-        ui::tool_strip::render(ctx, self);
+        // ── Left: media bin panel ──
+        egui::SidePanel::left("media_bin_panel")
+            .default_width(300.0)
+            .min_width(240.0)
+            .max_width(420.0)
+            .resizable(true)
+            .show(ctx, |ui| {
+                ui::media_bin::render(ui, self);
+            });
 
-        // ── Left panel: media bin ──
-        let show_bin = self.editor.read().show_media_bin;
-        if show_bin {
-            egui::SidePanel::left("media_bin_panel")
-                .default_width(280.0)
-                .min_width(220.0)
-                .max_width(420.0)
-                .resizable(true)
-                .show(ctx, |ui| {
-                    ui::media_bin::render(ui, self);
-                });
-        }
-
-        // ── Right panel: inspector + effects ──
+        // ── Right: inspector/effects panel ──
         let show_right = self.editor.read().show_inspector || self.editor.read().show_effects;
         if show_right {
             egui::SidePanel::right("right_panel")
-                .default_width(300.0)
-                .min_width(220.0)
-                .max_width(440.0)
+                .default_width(280.0)
+                .min_width(200.0)
+                .max_width(400.0)
                 .resizable(true)
                 .show(ctx, |ui| {
                     let show_inspector = self.editor.read().show_inspector;
                     let show_effects = self.editor.read().show_effects;
-
                     if show_inspector {
                         egui::TopBottomPanel::top("inspector_panel")
                             .resizable(true)
                             .default_height(ui.available_height() * 0.5)
-                            .min_height(120.0)
+                            .min_height(100.0)
                             .show_inside(ui, |ui| {
                                 ui::inspector::render(ui, self);
                             });
@@ -255,21 +247,24 @@ impl ProApp {
                 });
         }
 
-        // ── Center: monitors (top) + timeline (bottom, resizable) ──
+        // ── Center: preview (top) + transport + timeline (bottom) ──
+        // Transport bar (timecode + nav buttons) — above timeline
+        ui::transport_bar::render(ctx, self);
+
+        // Preview monitor (resizable top panel)
         egui::TopBottomPanel::top("monitors_panel")
             .resizable(true)
-            .default_height(280.0)
-            .min_height(160.0)
+            .default_height(320.0)
+            .min_height(180.0)
             .max_height(500.0)
             .show(ctx, |ui| {
-                ui.painter()
-                    .rect_filled(ui.max_rect(), 0.0, crate::theme::BG_DEEPEST);
+                ui.painter().rect_filled(ui.max_rect(), 0.0, crate::theme::BG_DEEPEST);
                 ui::monitors::render(ui, self);
             });
 
+        // Timeline (center/bottom)
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.painter()
-                .rect_filled(ui.max_rect(), 0.0, crate::theme::BG_PANEL);
+            ui.painter().rect_filled(ui.max_rect(), 0.0, crate::theme::BG_PANEL);
             ui::timeline::render(ui, self);
         });
 
