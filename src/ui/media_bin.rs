@@ -139,7 +139,7 @@ fn render_search_bar(ui: &mut egui::Ui, app: &mut ProApp) {
 
     let mut query = app.editor.read().media_search_query.clone();
     let focused = ui.ctx().memory(|m| m.has_focus(ui.id().with("search_field")));
-    let cursor_visible = focused && (ui.ctx().frame_nr() / 30) % 2 == 0;
+    let cursor_visible = focused && (ui.ctx().frame_count() / 30) % 2 == 0;
 
     let display_text = if query.is_empty() && !focused {
         "Search".to_string()
@@ -264,7 +264,7 @@ fn render_asset_grid(ui: &mut egui::Ui, app: &mut ProApp) {
 
     egui::ScrollArea::vertical()
         .auto_shrink([false, true])
-        .show_ui(ui, |ui| {
+        .show(ui, |ui| {
             ui.set_min_size(egui::Vec2::new(grid_rect.width(), grid_h));
             ui.add_space(pad);
 
@@ -506,17 +506,15 @@ fn render_bottom_toolbar(ui: &mut egui::Ui, app: &mut ProApp) {
     let mut x = rect.left() + 8.0;
 
     // ── Left: import, sort, filter ──
-    x = icon_button_h(ui, x, cy, "import", |p, r| icons::plus(p, r, theme::TEXT_SECONDARY))
-        .on_hover_text("Import media")
-        .1;
-    x += 4.0;
-    x = icon_button_h(ui, x, cy, "sort", |p, r| icons::sort(p, r, theme::TEXT_SECONDARY))
-        .on_hover_text("Sort")
-        .1;
-    x += 4.0;
-    x = icon_button_h(ui, x, cy, "filter", |p, r| icons::filter(p, r, theme::TEXT_SECONDARY))
-        .on_hover_text("Filter")
-        .1;
+    let (x2, r) = icon_button_h(ui, x, cy, "import", |p, r| icons::plus(p, r, theme::TEXT_SECONDARY));
+    r.on_hover_text("Import media");
+    x = x2 + 4.0;
+    let (x2, r) = icon_button_h(ui, x, cy, "sort", |p, r| icons::sort(p, r, theme::TEXT_SECONDARY));
+    r.on_hover_text("Sort");
+    x = x2 + 4.0;
+    let (x2, r) = icon_button_h(ui, x, cy, "filter", |p, r| icons::filter(p, r, theme::TEXT_SECONDARY));
+    r.on_hover_text("Filter");
+    x = x2;
 
     // ── Center: zoom slider ──
     let slider_w = 120.0;
@@ -601,14 +599,14 @@ fn icon_button_h(
     x: f32,
     cy: f32,
     id: &str,
-    icon_fn: impl FnOnce(&egui::Painter, egui::Rect, egui::Color32),
+    icon_fn: impl FnOnce(&egui::Painter, egui::Rect),
 ) -> (f32, egui::Response) {
     let rect = egui::Rect::from_center_size(egui::pos2(x + 12.0, cy), egui::Vec2::new(20.0, 20.0));
     let resp = ui.interact(rect, ui.id().with(id), egui::Sense::click());
     if resp.hovered() {
         ui.painter().rect_filled(rect, 3.0, theme::BG_HOVER);
     }
-    icon_fn(ui.painter(), rect, theme::TEXT_SECONDARY);
+    icon_fn(ui.painter(), rect);
     (x + 24.0, resp)
 }
 

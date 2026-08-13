@@ -349,7 +349,7 @@ fn render_track_header(ui: &mut egui::Ui, rect: egui::Rect, track: &Track) {
         badge_rect.center(),
         egui::Align2::CENTER_CENTER,
         &track.name,
-        egui::FontId::proportional(10.0).family(egui::FontFamily::Monospace),
+        egui::FontId::monospace(10.0),
         egui::Color32::WHITE,
     );
 

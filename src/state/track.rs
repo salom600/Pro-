@@ -13,6 +13,8 @@ pub struct Track {
     #[serde(default)]
     pub muted: bool,
     #[serde(default)]
+    pub solo: bool,
+    #[serde(default)]
     pub hidden: bool,
     #[serde(default)]
     pub clips: Vec<Clip>,
@@ -42,6 +44,7 @@ impl Track {
             name: name.to_string(),
             locked: false,
             muted: false,
+            solo: false,
             hidden: false,
             clips: Vec::new(),
         }

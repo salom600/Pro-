@@ -60,14 +60,12 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
             x += tc_w + 16.0;
 
             // ── Navigation buttons ──
-            x = nav_button(ui, x, cy, "go_start", |p, r| icons::go_to_start(p, r, theme::TEXT_SECONDARY))
-                .on_hover_text("Go to Start (Home)")
-                .1;
-            x += 2.0;
-            x = nav_button(ui, x, cy, "prev_frame", |p, r| icons::prev_frame(p, r, theme::TEXT_SECONDARY))
-                .on_hover_text("Previous Frame (Left)")
-                .1;
-            x += 2.0;
+            let (x2, r) = nav_button(ui, x, cy, "go_start", |p, r| icons::go_to_start(p, r, theme::TEXT_SECONDARY));
+            r.on_hover_text("Go to Start (Home)");
+            x = x2 + 2.0;
+            let (x2, r) = nav_button(ui, x, cy, "prev_frame", |p, r| icons::prev_frame(p, r, theme::TEXT_SECONDARY));
+            r.on_hover_text("Previous Frame (Left)");
+            x = x2 + 2.0;
 
             // Play/Pause (accent-colored, larger)
             let is_playing = app.editor.read().timeline.is_playing;
@@ -97,15 +95,12 @@ pub fn render(ctx: &egui::Context, app: &mut ProApp) {
             pp_resp.on_hover_text("Play/Pause (Space)");
             x += pp_size + 2.0;
 
-            x = nav_button(ui, x, cy, "next_frame", |p, r| icons::next_frame(p, r, theme::TEXT_SECONDARY))
-                .on_hover_text("Next Frame (Right)")
-                .1;
-            x += 2.0;
-            x = nav_button(ui, x, cy, "go_end", |p, r| icons::go_to_end(p, r, theme::TEXT_SECONDARY))
-                .on_hover_text("Go to End (End)")
-                .1;
-
-            x += 12.0;
+            let (x2, r) = nav_button(ui, x, cy, "next_frame", |p, r| icons::next_frame(p, r, theme::TEXT_SECONDARY));
+            r.on_hover_text("Next Frame (Right)");
+            x = x2 + 2.0;
+            let (x2, r) = nav_button(ui, x, cy, "go_end", |p, r| icons::go_to_end(p, r, theme::TEXT_SECONDARY));
+            r.on_hover_text("Go to End (End)");
+            x = x2 + 12.0;
 
             // ── Snap toggle ──
             let snap_enabled = app.editor.read().timeline.snap_enabled;
@@ -158,7 +153,7 @@ fn nav_button(
     x: f32,
     cy: f32,
     id: &str,
-    icon_fn: impl FnOnce(&egui::Painter, egui::Rect, egui::Color32),
+    icon_fn: impl FnOnce(&egui::Painter, egui::Rect),
 ) -> (f32, egui::Response) {
     let size = 26.0;
     let rect = egui::Rect::from_center_size(egui::pos2(x + size / 2.0, cy), egui::Vec2::splat(size));
@@ -166,7 +161,7 @@ fn nav_button(
     if resp.hovered() {
         ui.painter().rect_filled(rect, 3.0, theme::BG_HOVER);
     }
-    icon_fn(ui.painter(), rect.shrink(6.0), theme::TEXT_SECONDARY);
+    icon_fn(ui.painter(), rect.shrink(6.0));
     (x + size, resp)
 }
 

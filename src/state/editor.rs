@@ -39,14 +39,14 @@ pub struct EditorState {
     pub active_media_tab: MediaTab,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MediaViewMode {
     #[default]
     Grid,
     List,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum MediaTab {
     #[default]
     Project,
@@ -83,7 +83,7 @@ impl EditorState {
 }
 
 /// Full professional tool set matching Premiere Pro / DaVinci Resolve.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Tool {
     #[default]
