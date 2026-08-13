@@ -137,7 +137,8 @@ jobs:
           echo "BINDGEN_EXTRA_CLANG_ARGS=$bindgenArgs" >> $env:GITHUB_ENV
           Write-Host "BINDGEN_EXTRA_CLANG_ARGS: $bindgenArgs"
 
-      - name: Build Rust library
+      - name: Build Rust library — Unix
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           FEATURES="${{ matrix.features }}"
@@ -146,6 +147,17 @@ jobs:
           else
             cargo build --release --target ${{ matrix.target }}
           fi
+
+      - name: Build Rust library — Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $FEATURES = "${{ matrix.features }}"
+          if ($FEATURES) {
+            cargo build --release --target ${{ matrix.target }} --features $FEATURES
+          } else {
+            cargo build --release --target ${{ matrix.target }}
+          }
 
       - name: Upload Rust library
         uses: actions/upload-artifact@v4
