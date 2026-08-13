@@ -1,11 +1,9 @@
-//! Pro Video Editor — native, GPU-accelerated video editor.
+//! Pro Video Editor — Rust engine library.
 //!
-//! Built with pure Rust + egui + wgpu. No browser, no JS, no HTML/CSS.
-//! Designed for heavy media workloads, large files, and long-term growth.
+//! Compiled as a cdylib (.so/.dll/.dylib) and called from the Qt/C++ frontend
+//! via the C ABI defined in `ffi.rs`.
 
-pub mod app;
+pub mod ffi;
 pub mod media;
 pub mod render;
 pub mod state;
-pub mod theme;
-pub mod ui;

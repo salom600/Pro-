@@ -15,8 +15,8 @@ env:
   RUST_BACKTRACE: "1"
 
 jobs:
-  build:
-    name: Build (${{ matrix.label }})
+  build-rust:
+    name: Build Rust Engine (${{ matrix.label }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -26,22 +26,14 @@ jobs:
             target: x86_64-unknown-linux-gnu
             label: linux-x64
             features: ffmpeg
-            artifact_name: pro-video-editor
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x64
             features: ffmpeg
-            artifact_name: pro-video-editor.exe
           - os: macos-14
             target: aarch64-apple-darwin
             label: macos-arm64
             features: ffmpeg
-            artifact_name: pro-video-editor
-          - os: macos-13
-            target: x86_64-apple-darwin
-            label: macos-x64
-            features: ffmpeg
-            artifact_name: pro-video-editor
 
     steps:
       - name: Checkout
@@ -63,34 +55,17 @@ jobs:
           restore-keys: |
             cargo-${{ matrix.label }}-
 
-      # ── Linux ───────────────────────────────────────────────────────────
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y \
-            libgtk-3-dev \
-            libxcb-render0-dev \
-            libxcb-shape0-dev \
-            libxcb-xfixes0-dev \
-            libxkbcommon-dev \
-            libssl-dev \
-            libgl1-mesa-dev \
-            libegl1-mesa-dev \
-            libavcodec-dev \
-            libavformat-dev \
-            libavutil-dev \
-            libavfilter-dev \
-            libavdevice-dev \
-            libswscale-dev \
-            libswresample-dev \
-            pkg-config
+            libavcodec-dev libavformat-dev libavutil-dev libavfilter-dev \
+            libavdevice-dev libswscale-dev libswresample-dev pkg-config
 
-      # ── macOS ───────────────────────────────────────────────────────────
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: |
-          # ffmpeg-next v9 supports FFmpeg 8.x (Homebrew's default)
           brew install ffmpeg
           BREW_PREFIX="$(brew --prefix ffmpeg)"
           echo "FFMPEG_DIR=${BREW_PREFIX}" >> $GITHUB_ENV
@@ -101,108 +76,33 @@ jobs:
           echo "LD_LIBRARY_PATH=${BREW_PREFIX}/lib:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
           echo "BINDGEN_EXTRA_CLANG_ARGS=-I${BREW_PREFIX}/include -L${BREW_PREFIX}/lib" >> $GITHUB_ENV
 
-      # ── Windows (vcpkg) ────────────────────────────────────────────────
-      - name: Set up MSVC Developer Environment
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
-      - name: Cache vcpkg FFmpeg
-        id: vcpkg-cache
+      - name: Install Windows dependencies (vcpkg)
         if: runner.os == 'Windows'
         uses: actions/cache@v4
         with:
-          path: |
-            C:\vcpkg\installed
-            C:\usr\include
-            D:\usr\include
+          path: C:\vcpkg\installed
           key: vcpkg-ffmpeg-x64-windows-v4
 
-      - name: Install Windows dependencies (vcpkg)
-        if: runner.os == 'Windows' && steps.vcpkg-cache.outputs.cache-hit != 'true'
-        shell: pwsh
-        run: |
-          Write-Host "Installing FFmpeg via vcpkg (this takes ~50 min on first run)..."
-          & C:\vcpkg\vcpkg install ffmpeg:x64-windows --x-install-root=C:\vcpkg\installed
-
-      - name: Configure FFmpeg paths
+      - name: Install FFmpeg (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
+          & C:\vcpkg\vcpkg install ffmpeg:x64-windows --x-install-root=C:\vcpkg\installed
           $FFMPEG_PREFIX = "C:\vcpkg\installed\x64-windows"
-          Write-Host "FFmpeg installed to: $FFMPEG_PREFIX"
-
-          # ── CRITICAL FIX: /usr/include on Windows ──
-          # ffmpeg-sys-next's build.rs hardcodes '-I/usr/include' in the
-          # clang args for bindgen. On Windows, '/usr/include' resolves to
-          # '<current-drive>:\usr\include'. The build runs on D: drive
-          # (D:\a\Pro-\Pro-), so we must create D:\usr\include.
-          # We also create C:\usr\include as a fallback for good measure.
           foreach ($drive in @("C:", "D:")) {
             $usrInclude = "$drive\usr\include"
-            Write-Host "Creating $usrInclude with FFmpeg headers..."
             New-Item -ItemType Directory -Force -Path $usrInclude | Out-Null
             Copy-Item -Path "$FFMPEG_PREFIX\include\*" -Destination $usrInclude -Recurse -Force
-            Write-Host "$usrInclude now contains:"
-            Get-ChildItem $usrInclude -Directory | ForEach-Object { Write-Host "  $($_.Name)/" }
           }
-
-          # Set environment variables for ffmpeg-sys-next + bindgen
           echo "FFMPEG_DIR=$FFMPEG_PREFIX" >> $env:GITHUB_ENV
           echo "FFMPEG_INCLUDE_DIR=$FFMPEG_PREFIX\include" >> $env:GITHUB_ENV
           echo "FFMPEG_LIBS_DIR=$FFMPEG_PREFIX\lib" >> $env:GITHUB_ENV
           echo "LIB=$FFMPEG_PREFIX\lib;$env:LIB" >> $env:GITHUB_ENV
           echo "INCLUDE=$FFMPEG_PREFIX\include;$env:INCLUDE" >> $env:GITHUB_ENV
-          echo "PKG_CONFIG_PATH=$FFMPEG_PREFIX\lib\pkgconfig;$env:PKG_CONFIG_PATH" >> $env:GITHUB_ENV
+          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-IC:\usr\include -ID:\usr\include -I$FFMPEG_PREFIX\include" >> $env:GITHUB_ENV
 
-          # LLVM/Clang is needed by bindgen — it's pre-installed on GH Actions.
-          $llvmPath = "C:\Program Files\LLVM\bin"
-          if (Test-Path $llvmPath) {
-            echo "LIBCLANG_PATH=$llvmPath" >> $env:GITHUB_ENV
-            Write-Host "LIBCLANG_PATH set to $llvmPath"
-          }
-
-          # Build BINDGEN_EXTRA_CLANG_ARGS with ALL include paths.
-          # Include both C:\usr\include and D:\usr\include so the hardcoded
-          # /usr/include path resolves regardless of the current drive.
-          $bindgenArgs = "-IC:\usr\include -ID:\usr\include -I$FFMPEG_PREFIX\include"
-
-          # Add all paths from the INCLUDE env var (set by msvc-dev-cmd)
-          if ($env:INCLUDE) {
-            $env:INCLUDE -split ';' | ForEach-Object {
-              if ($_ -and (Test-Path $_)) {
-                $bindgenArgs += " -I`"$_`""
-              }
-            }
-          }
-
-          # Also find Windows SDK directly (fallback)
-          $sdkBase = "C:\Program Files (x86)\Windows Kits\10\Include"
-          if (Test-Path $sdkBase) {
-            $sdkVersion = Get-ChildItem $sdkBase -Directory | Sort-Object Name -Descending | Select-Object -First 1
-            if ($sdkVersion) {
-              foreach ($subdir in @("ucrt", "um", "shared")) {
-                $path = "$($sdkVersion.FullName)\$subdir"
-                if (Test-Path $path) {
-                  $bindgenArgs += " -I`"$path`""
-                }
-              }
-            }
-          }
-
-          echo "BINDGEN_EXTRA_CLANG_ARGS=$bindgenArgs" >> $env:GITHUB_ENV
-          Write-Host "BINDGEN_EXTRA_CLANG_ARGS: $bindgenArgs"
-
-          # List installed FFmpeg files for debugging
-          Write-Host "`nFFmpeg libraries:"
-          Get-ChildItem "$FFMPEG_PREFIX\lib\*.lib" | ForEach-Object { Write-Host "  $($_.Name)" }
-          Write-Host "`nFFmpeg DLLs:"
-          Get-ChildItem "$FFMPEG_PREFIX\bin\*.dll" | ForEach-Object { Write-Host "  $($_.Name)" }
-
-      # ── Build ───────────────────────────────────────────────────────────
-      - name: Build (release) — Unix
-        if: runner.os != 'Windows'
+      - name: Build Rust library
         shell: bash
         run: |
           FEATURES="${{ matrix.features }}"
@@ -212,138 +112,62 @@ jobs:
             cargo build --release --target ${{ matrix.target }}
           fi
 
-      - name: Build (release) — Windows
-        if: runner.os == 'Windows'
-        shell: pwsh
-        env:
-          FFMPEG_DIR: C:\vcpkg\installed\x64-windows
-          FFMPEG_INCLUDE_DIR: C:\vcpkg\installed\x64-windows\include
-          FFMPEG_LIBS_DIR: C:\vcpkg\installed\x64-windows\lib
-          LIB: C:\vcpkg\installed\x64-windows\lib;${{ env.LIB }}
-          INCLUDE: C:\vcpkg\installed\x64-windows\include;${{ env.INCLUDE }}
-          PKG_CONFIG_PATH: C:\vcpkg\installed\x64-windows\lib\pkgconfig
-          LIBCLANG_PATH: C:\Program Files\LLVM\bin
-          BINDGEN_EXTRA_CLANG_ARGS: -IC:\usr\include -ID:\usr\include -IC:\vcpkg\installed\x64-windows\include
+      - name: Upload Rust library
+        uses: actions/upload-artifact@v4
+        with:
+          name: rust-engine-${{ matrix.label }}
+          path: |
+            target/${{ matrix.target }}/release/libpro_video_editor.*
+            target/${{ matrix.target }}/release/pro_video_editor.*
+            target/${{ matrix.target }}/release/*.dll
+          if-no-files-found: warn
+
+  build-qt-linux:
+    name: Build Qt App (Linux)
+    runs-on: ubuntu-22.04
+    needs: build-rust
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt6
         run: |
-          # Debug: print env vars to verify they're set
-          Write-Host "FFMPEG_DIR = $env:FFMPEG_DIR"
-          Write-Host "FFMPEG_INCLUDE_DIR = $env:FFMPEG_INCLUDE_DIR"
-          Write-Host "BINDGEN_EXTRA_CLANG_ARGS = $env:BINDGEN_EXTRA_CLANG_ARGS"
-          
-          # Verify headers exist at the expected paths
-          Write-Host "`nChecking header locations:"
-          $checkPaths = @(
-            "C:\vcpkg\installed\x64-windows\include\libavcodec\avcodec.h",
-            "C:\usr\include\libavcodec\avcodec.h",
-            "D:\usr\include\libavcodec\avcodec.h"
-          )
-          foreach ($p in $checkPaths) {
-            if (Test-Path $p) { Write-Host "  FOUND: $p" }
-            else { Write-Host "  MISSING: $p" }
-          }
+          sudo apt-get update
+          sudo apt-get install -y qt6-base-dev qt6-multimedia-dev cmake ninja-build
 
-          $FEATURES = "${{ matrix.features }}"
-          if ($FEATURES) {
-            cargo build --release --target ${{ matrix.target }} --features $FEATURES
-          } else {
-            cargo build --release --target ${{ matrix.target }}
-          }
+      - name: Download Rust library
+        uses: actions/download-artifact@v4
+        with:
+          name: rust-engine-linux-x64
+          path: target/release
 
-      # ── Package ─────────────────────────────────────────────────────────
-      - name: Package binary (Unix)
-        if: runner.os != 'Windows'
+      - name: Fix library name
+        run: |
+          cd target/release
+          ls -la
+          # Ensure the .so is named correctly
+          if [ -f "libpro_video_editor.dylib" ]; then mv libpro_video_editor.dylib libpro_video_editor.so; fi
+          chmod +x libpro_video_editor.so 2>/dev/null || true
+
+      - name: Build Qt app
+        run: |
+          cd qt
+          mkdir -p build && cd build
+          cmake .. -DCMAKE_BUILD_TYPE=Release -G Ninja
+          ninja -j$(nproc)
+
+      - name: Package
         run: |
           mkdir -p package
-          cp target/${{ matrix.target }}/release/${{ matrix.artifact_name }} package/
+          cp qt/build/ProVideoEditor package/
+          cp target/release/libpro_video_editor.so package/
           cp README.md LICENSE package/ 2>/dev/null || true
-          tar czf pro-video-editor-${{ matrix.label }}.tar.gz -C package .
-          ls -la pro-video-editor-${{ matrix.label }}.tar.gz
-
-      - name: Package binary (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path package
-          Copy-Item "target/${{ matrix.target }}/release/${{ matrix.artifact_name }}" "package/"
-
-          # Copy FFmpeg DLLs so the executable can run standalone
-          $FFMPEG_BIN = "C:\vcpkg\installed\x64-windows\bin"
-          if (Test-Path $FFMPEG_BIN) {
-            Write-Host "Copying FFmpeg DLLs..."
-            Copy-Item "$FFMPEG_BIN\*.dll" "package/" -ErrorAction SilentlyContinue
-            # Also copy any runtime dependencies (like libcrypto, etc.)
-            Copy-Item "$FFMPEG_BIN\*.pdb" "package/" -ErrorAction SilentlyContinue
-          }
-
-          Copy-Item "README.md" "package/" -ErrorAction SilentlyContinue
-          Copy-Item "LICENSE" "package/" -ErrorAction SilentlyContinue
-          Compress-Archive -Path "package/*" -DestinationPath "pro-video-editor-${{ matrix.label }}.zip"
-          Write-Host "Package contents:"
-          Get-ChildItem "package/" | ForEach-Object { Write-Host "  $($_.Name) ($($_.Length) bytes)" }
-          Get-ChildItem "pro-video-editor-${{ matrix.label }}.zip"
+          cd package
+          tar czf ../pro-video-editor-linux-x64.tar.gz .
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pro-video-editor-${{ matrix.label }}
-          path: |
-            pro-video-editor-${{ matrix.label }}.tar.gz
-            pro-video-editor-${{ matrix.label }}.zip
+          name: pro-video-editor-linux-x64
+          path: pro-video-editor-linux-x64.tar.gz
           if-no-files-found: warn
-          retention-days: 30
-
-      - name: Build summary
-        if: always()
-        shell: bash
-        run: |
-          echo "## Build — ${{ matrix.label }}" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Features: ${{ matrix.features }}" >> $GITHUB_STEP_SUMMARY
-          ls -la target/${{ matrix.target }}/release/pro-video-editor* 2>/dev/null || echo "No binary found"
-          echo "" >> $GITHUB_STEP_SUMMARY
-          echo "Binary size: $(du -h target/${{ matrix.target }}/release/pro-video-editor* 2>/dev/null | head -1 | cut -f1 || echo 'unknown')"
-
-  release:
-    name: Release
-    needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: List artifacts
-        run: find artifacts -type f | head -20
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Pro Video Editor ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
-          files: |
-            artifacts/**/*.tar.gz
-            artifacts/**/*.zip
-          body: |
-            ## Pro Video Editor ${{ github.ref_name }}
-
-            Native cross-platform video editor — pure Rust + egui + wgpu. No browser.
-
-            ### Install
-            - **Windows**: download `.zip`, extract, run `pro-video-editor.exe`.
-              The zip includes all required FFmpeg DLLs — no separate installation needed.
-            - **macOS**: download `.tar.gz`, extract, run `./pro-video-editor` (may need `xattr -dr com.apple.quarantine`).
-            - **Linux**: download `.tar.gz`, extract, run `./pro-video-editor`.
-
-            ### Video Playback
-            All platforms now include real FFmpeg video decoding:
-            - **Linux**: system FFmpeg 7.x libraries
-            - **macOS**: Homebrew FFmpeg 7.x
-            - **Windows**: vcpkg FFmpeg (DLLs bundled in the zip)
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
