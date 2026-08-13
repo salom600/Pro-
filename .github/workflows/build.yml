@@ -215,7 +215,33 @@ jobs:
       - name: Build (release) — Windows
         if: runner.os == 'Windows'
         shell: pwsh
+        env:
+          FFMPEG_DIR: C:\vcpkg\installed\x64-windows
+          FFMPEG_INCLUDE_DIR: C:\vcpkg\installed\x64-windows\include
+          FFMPEG_LIBS_DIR: C:\vcpkg\installed\x64-windows\lib
+          LIB: C:\vcpkg\installed\x64-windows\lib;${{ env.LIB }}
+          INCLUDE: C:\vcpkg\installed\x64-windows\include;${{ env.INCLUDE }}
+          PKG_CONFIG_PATH: C:\vcpkg\installed\x64-windows\lib\pkgconfig
+          LIBCLANG_PATH: C:\Program Files\LLVM\bin
+          BINDGEN_EXTRA_CLANG_ARGS: -IC:\usr\include -ID:\usr\include -IC:\vcpkg\installed\x64-windows\include
         run: |
+          # Debug: print env vars to verify they're set
+          Write-Host "FFMPEG_DIR = $env:FFMPEG_DIR"
+          Write-Host "FFMPEG_INCLUDE_DIR = $env:FFMPEG_INCLUDE_DIR"
+          Write-Host "BINDGEN_EXTRA_CLANG_ARGS = $env:BINDGEN_EXTRA_CLANG_ARGS"
+          
+          # Verify headers exist at the expected paths
+          Write-Host "`nChecking header locations:"
+          $checkPaths = @(
+            "C:\vcpkg\installed\x64-windows\include\libavcodec\avcodec.h",
+            "C:\usr\include\libavcodec\avcodec.h",
+            "D:\usr\include\libavcodec\avcodec.h"
+          )
+          foreach ($p in $checkPaths) {
+            if (Test-Path $p) { Write-Host "  FOUND: $p" }
+            else { Write-Host "  MISSING: $p" }
+          }
+
           $FEATURES = "${{ matrix.features }}"
           if ($FEATURES) {
             cargo build --release --target ${{ matrix.target }} --features $FEATURES
