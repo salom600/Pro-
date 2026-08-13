@@ -30,7 +30,7 @@ jobs:
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             label: windows-x64
-            features: ""
+            features: ffmpeg
             artifact_name: pro-video-editor.exe
           - os: macos-14
             target: aarch64-apple-darwin
@@ -63,6 +63,7 @@ jobs:
           restore-keys: |
             cargo-${{ matrix.label }}-
 
+      # ── Linux ───────────────────────────────────────────────────────────
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -85,10 +86,10 @@ jobs:
             libswresample-dev \
             pkg-config
 
+      # ── macOS ───────────────────────────────────────────────────────────
       - name: Install macOS dependencies
         if: runner.os == 'macOS'
         run: |
-          # Install FFmpeg 7.x (matches ffmpeg-next v7 crate)
           brew install ffmpeg@7
           brew link --force ffmpeg@7
           BREW_PREFIX="$(brew --prefix ffmpeg@7)"
@@ -100,6 +101,56 @@ jobs:
           echo "LD_LIBRARY_PATH=${BREW_PREFIX}/lib:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
           echo "BINDGEN_EXTRA_CLANG_ARGS=-I${BREW_PREFIX}/include -L${BREW_PREFIX}/lib" >> $GITHUB_ENV
 
+      # ── Windows (vcpkg) ────────────────────────────────────────────────
+      - name: Cache vcpkg FFmpeg
+        if: runner.os == 'Windows'
+        uses: actions/cache@v4
+        with:
+          path: |
+            C:\vcpkg\installed
+          key: vcpkg-ffmpeg-x64-windows-v2
+
+      - name: Install Windows dependencies (vcpkg)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          # vcpkg is pre-installed on GitHub Actions Windows runners at C:\vcpkg
+          # Install FFmpeg with shared libraries (DLLs) for x64-windows.
+          # This may take 20-30 min on first run; cache makes subsequent runs fast.
+          Write-Host "Installing FFmpeg via vcpkg..."
+          & C:\vcpkg\vcpkg install ffmpeg:x64-windows --x-install-root=C:\vcpkg\installed
+
+          $FFMPEG_PREFIX = "C:\vcpkg\installed\x64-windows"
+          Write-Host "FFmpeg installed to: $FFMPEG_PREFIX"
+
+          # Set environment variables for ffmpeg-sys-next + bindgen
+          echo "FFMPEG_DIR=$FFMPEG_PREFIX" >> $env:GITHUB_ENV
+          echo "FFMPEG_INCLUDE_DIR=$FFMPEG_PREFIX\include" >> $env:GITHUB_ENV
+          echo "FFMPEG_LIBS_DIR=$FFMPEG_PREFIX\lib" >> $env:GITHUB_ENV
+          echo "LIB=$FFMPEG_PREFIX\lib;$env:LIB" >> $env:GITHUB_ENV
+          echo "INCLUDE=$FFMPEG_PREFIX\include;$env:INCLUDE" >> $env:GITHUB_ENV
+          echo "PKG_CONFIG_PATH=$FFMPEG_PREFIX\lib\pkgconfig;$env:PKG_CONFIG_PATH" >> $env:GITHUB_ENV
+          echo "BINDGEN_EXTRA_CLANG_ARGS=-I$FFMPEG_PREFIX\include" >> $env:GITHUB_ENV
+
+          # LLVM/Clang is needed by bindgen — it's pre-installed on GH Actions.
+          # Make sure LIBCLANG_PATH is set.
+          $llvmPath = "C:\Program Files\LLVM\bin"
+          if (Test-Path $llvmPath) {
+            echo "LIBCLANG_PATH=$llvmPath" >> $env:GITHUB_ENV
+            Write-Host "LIBCLANG_PATH set to $llvmPath"
+          } else {
+            Write-Host "WARNING: LLVM not found at $llvmPath — bindgen may fail"
+          }
+
+          # List installed FFmpeg files for debugging
+          Write-Host "`nFFmpeg libraries:"
+          Get-ChildItem "$FFMPEG_PREFIX\lib\*.lib" | ForEach-Object { Write-Host "  $($_.Name)" }
+          Write-Host "`nFFmpeg DLLs:"
+          Get-ChildItem "$FFMPEG_PREFIX\bin\*.dll" | ForEach-Object { Write-Host "  $($_.Name)" }
+          Write-Host "`nFFmpeg headers:"
+          Get-ChildItem "$FFMPEG_PREFIX\include" -Directory | ForEach-Object { Write-Host "  $($_.Name)/" }
+
+      # ── Build ───────────────────────────────────────────────────────────
       - name: Build (release)
         shell: bash
         run: |
@@ -110,6 +161,7 @@ jobs:
             cargo build --release --target ${{ matrix.target }}
           fi
 
+      # ── Package ─────────────────────────────────────────────────────────
       - name: Package binary (Unix)
         if: runner.os != 'Windows'
         run: |
@@ -125,9 +177,21 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path package
           Copy-Item "target/${{ matrix.target }}/release/${{ matrix.artifact_name }}" "package/"
+
+          # Copy FFmpeg DLLs so the executable can run standalone
+          $FFMPEG_BIN = "C:\vcpkg\installed\x64-windows\bin"
+          if (Test-Path $FFMPEG_BIN) {
+            Write-Host "Copying FFmpeg DLLs..."
+            Copy-Item "$FFMPEG_BIN\*.dll" "package/" -ErrorAction SilentlyContinue
+            # Also copy any runtime dependencies (like libcrypto, etc.)
+            Copy-Item "$FFMPEG_BIN\*.pdb" "package/" -ErrorAction SilentlyContinue
+          }
+
           Copy-Item "README.md" "package/" -ErrorAction SilentlyContinue
           Copy-Item "LICENSE" "package/" -ErrorAction SilentlyContinue
           Compress-Archive -Path "package/*" -DestinationPath "pro-video-editor-${{ matrix.label }}.zip"
+          Write-Host "Package contents:"
+          Get-ChildItem "package/" | ForEach-Object { Write-Host "  $($_.Name) ($($_.Length) bytes)" }
           Get-ChildItem "pro-video-editor-${{ matrix.label }}.zip"
 
       - name: Upload artifacts
@@ -184,11 +248,14 @@ jobs:
 
             ### Install
             - **Windows**: download `.zip`, extract, run `pro-video-editor.exe`.
+              The zip includes all required FFmpeg DLLs — no separate installation needed.
             - **macOS**: download `.tar.gz`, extract, run `./pro-video-editor` (may need `xattr -dr com.apple.quarantine`).
             - **Linux**: download `.tar.gz`, extract, run `./pro-video-editor`.
 
             ### Video Playback
-            - Linux and macOS builds include FFmpeg integration for real video playback.
-            - Windows build uses placeholder display (FFmpeg integration pending).
+            All platforms now include real FFmpeg video decoding:
+            - **Linux**: system FFmpeg 7.x libraries
+            - **macOS**: Homebrew FFmpeg 7.x
+            - **Windows**: vcpkg FFmpeg (DLLs bundled in the zip)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
