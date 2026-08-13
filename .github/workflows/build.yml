@@ -102,6 +102,12 @@ jobs:
           echo "BINDGEN_EXTRA_CLANG_ARGS=-I${BREW_PREFIX}/include -L${BREW_PREFIX}/lib" >> $GITHUB_ENV
 
       # ── Windows (vcpkg) ────────────────────────────────────────────────
+      - name: Set up MSVC Developer Environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
       - name: Cache vcpkg FFmpeg
         if: runner.os == 'Windows'
         uses: actions/cache@v4
@@ -116,7 +122,7 @@ jobs:
         run: |
           # vcpkg is pre-installed on GitHub Actions Windows runners at C:\vcpkg
           # Install FFmpeg with shared libraries (DLLs) for x64-windows.
-          # This may take 20-30 min on first run; cache makes subsequent runs fast.
+          # This may take 30-50 min on first run; cache makes subsequent runs fast.
           Write-Host "Installing FFmpeg via vcpkg..."
           & C:\vcpkg\vcpkg install ffmpeg:x64-windows --x-install-root=C:\vcpkg\installed
 
@@ -130,25 +136,51 @@ jobs:
           echo "LIB=$FFMPEG_PREFIX\lib;$env:LIB" >> $env:GITHUB_ENV
           echo "INCLUDE=$FFMPEG_PREFIX\include;$env:INCLUDE" >> $env:GITHUB_ENV
           echo "PKG_CONFIG_PATH=$FFMPEG_PREFIX\lib\pkgconfig;$env:PKG_CONFIG_PATH" >> $env:GITHUB_ENV
-          echo "BINDGEN_EXTRA_CLANG_ARGS=-I$FFMPEG_PREFIX\include" >> $env:GITHUB_ENV
 
           # LLVM/Clang is needed by bindgen — it's pre-installed on GH Actions.
-          # Make sure LIBCLANG_PATH is set.
           $llvmPath = "C:\Program Files\LLVM\bin"
           if (Test-Path $llvmPath) {
             echo "LIBCLANG_PATH=$llvmPath" >> $env:GITHUB_ENV
             Write-Host "LIBCLANG_PATH set to $llvmPath"
-          } else {
-            Write-Host "WARNING: LLVM not found at $llvmPath — bindgen may fail"
           }
+
+          # Build BINDGEN_EXTRA_CLANG_ARGS with ALL include paths:
+          # - vcpkg FFmpeg headers
+          # - Windows SDK (ucrt, um, shared) — needed for errno.h, stdint.h, etc.
+          # - MSVC headers
+          $bindgenArgs = "-I$FFMPEG_PREFIX\include"
+
+          # Add all paths from the INCLUDE env var (set by msvc-dev-cmd)
+          if ($env:INCLUDE) {
+            $env:INCLUDE -split ';' | ForEach-Object {
+              if ($_ -and (Test-Path $_)) {
+                $bindgenArgs += " -I`"$_`""
+              }
+            }
+          }
+
+          # Also find Windows SDK directly (fallback)
+          $sdkBase = "C:\Program Files (x86)\Windows Kits\10\Include"
+          if (Test-Path $sdkBase) {
+            $sdkVersion = Get-ChildItem $sdkBase -Directory | Sort-Object Name -Descending | Select-Object -First 1
+            if ($sdkVersion) {
+              foreach ($subdir in @("ucrt", "um", "shared")) {
+                $path = "$($sdkVersion.FullName)\$subdir"
+                if (Test-Path $path) {
+                  $bindgenArgs += " -I`"$path`""
+                }
+              }
+            }
+          }
+
+          echo "BINDGEN_EXTRA_CLANG_ARGS=$bindgenArgs" >> $env:GITHUB_ENV
+          Write-Host "BINDGEN_EXTRA_CLANG_ARGS: $bindgenArgs"
 
           # List installed FFmpeg files for debugging
           Write-Host "`nFFmpeg libraries:"
           Get-ChildItem "$FFMPEG_PREFIX\lib\*.lib" | ForEach-Object { Write-Host "  $($_.Name)" }
           Write-Host "`nFFmpeg DLLs:"
           Get-ChildItem "$FFMPEG_PREFIX\bin\*.dll" | ForEach-Object { Write-Host "  $($_.Name)" }
-          Write-Host "`nFFmpeg headers:"
-          Get-ChildItem "$FFMPEG_PREFIX\include" -Directory | ForEach-Object { Write-Host "  $($_.Name)/" }
 
       # ── Build ───────────────────────────────────────────────────────────
       - name: Build (release)
