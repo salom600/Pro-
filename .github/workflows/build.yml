@@ -109,25 +109,40 @@ jobs:
           arch: x64
 
       - name: Cache vcpkg FFmpeg
+        id: vcpkg-cache
         if: runner.os == 'Windows'
         uses: actions/cache@v4
         with:
           path: |
             C:\vcpkg\installed
-          key: vcpkg-ffmpeg-x64-windows-v2
+            C:\usr\include
+          key: vcpkg-ffmpeg-x64-windows-v3
 
       - name: Install Windows dependencies (vcpkg)
+        if: runner.os == 'Windows' && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          Write-Host "Installing FFmpeg via vcpkg (this takes ~50 min on first run)..."
+          & C:\vcpkg\vcpkg install ffmpeg:x64-windows --x-install-root=C:\vcpkg\installed
+
+      - name: Configure FFmpeg paths
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          # vcpkg is pre-installed on GitHub Actions Windows runners at C:\vcpkg
-          # Install FFmpeg with shared libraries (DLLs) for x64-windows.
-          # This may take 30-50 min on first run; cache makes subsequent runs fast.
-          Write-Host "Installing FFmpeg via vcpkg..."
-          & C:\vcpkg\vcpkg install ffmpeg:x64-windows --x-install-root=C:\vcpkg\installed
-
           $FFMPEG_PREFIX = "C:\vcpkg\installed\x64-windows"
           Write-Host "FFmpeg installed to: $FFMPEG_PREFIX"
+
+          # ── CRITICAL FIX ──
+          # ffmpeg-sys-next's build.rs hardcodes '-I/usr/include' in the
+          # clang args for bindgen. On Windows, /usr/include doesn't exist.
+          # We create C:\usr\include and copy the FFmpeg headers there so
+          # the hardcoded path resolves. (On Windows, /usr/include maps to
+          # C:\usr\include on the current drive.)
+          Write-Host "Creating C:\usr\include with FFmpeg headers..."
+          New-Item -ItemType Directory -Force -Path "C:\usr\include"
+          Copy-Item -Path "$FFMPEG_PREFIX\include\*" -Destination "C:\usr\include\" -Recurse -Force
+          Write-Host "C:\usr\include now contains:"
+          Get-ChildItem "C:\usr\include" -Directory | ForEach-Object { Write-Host "  $($_.Name)/" }
 
           # Set environment variables for ffmpeg-sys-next + bindgen
           echo "FFMPEG_DIR=$FFMPEG_PREFIX" >> $env:GITHUB_ENV
@@ -145,10 +160,11 @@ jobs:
           }
 
           # Build BINDGEN_EXTRA_CLANG_ARGS with ALL include paths:
+          # - C:\usr\include (the hardcoded /usr/include path)
           # - vcpkg FFmpeg headers
           # - Windows SDK (ucrt, um, shared) — needed for errno.h, stdint.h, etc.
           # - MSVC headers
-          $bindgenArgs = "-I$FFMPEG_PREFIX\include"
+          $bindgenArgs = "-IC:\usr\include -I$FFMPEG_PREFIX\include"
 
           # Add all paths from the INCLUDE env var (set by msvc-dev-cmd)
           if ($env:INCLUDE) {
