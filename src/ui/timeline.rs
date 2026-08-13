@@ -362,7 +362,7 @@ fn render_track_header(ui: &mut egui::Ui, rect: egui::Rect, track: &Track) {
         egui::pos2(bx + HEADER_BTN_SIZE / 2.0, ctrl_y + HEADER_BTN_SIZE / 2.0),
         egui::Vec2::splat(HEADER_BTN_SIZE),
     );
-    let lock_resp = ui.interact(lock_rect, ui.id().with(("lock", track.id)), egui::Sense::click());
+    let lock_resp = ui.interact(lock_rect, ui.id().with(("lock", &track.id)), egui::Sense::click());
     if lock_resp.hovered() {
         painter.rect_filled(lock_rect, 2.0, theme::BG_HOVER);
     }
@@ -375,7 +375,7 @@ fn render_track_header(ui: &mut egui::Ui, rect: egui::Rect, track: &Track) {
             egui::pos2(bx + HEADER_BTN_SIZE / 2.0, ctrl_y + HEADER_BTN_SIZE / 2.0),
             egui::Vec2::splat(HEADER_BTN_SIZE),
         );
-        let ts_resp = ui.interact(ts_rect, ui.id().with(("target", track.id)), egui::Sense::click());
+        let ts_resp = ui.interact(ts_rect, ui.id().with(("target", &track.id)), egui::Sense::click());
         if ts_resp.hovered() {
             painter.rect_filled(ts_rect, 2.0, theme::BG_HOVER);
         }
@@ -387,7 +387,7 @@ fn render_track_header(ui: &mut egui::Ui, rect: egui::Rect, track: &Track) {
             egui::pos2(bx + HEADER_BTN_SIZE / 2.0, ctrl_y + HEADER_BTN_SIZE / 2.0),
             egui::Vec2::splat(HEADER_BTN_SIZE),
         );
-        let eye_resp = ui.interact(eye_rect, ui.id().with(("eye", track.id)), egui::Sense::click());
+        let eye_resp = ui.interact(eye_rect, ui.id().with(("eye", &track.id)), egui::Sense::click());
         if eye_resp.hovered() {
             painter.rect_filled(eye_rect, 2.0, theme::BG_HOVER);
         }
@@ -398,7 +398,7 @@ fn render_track_header(ui: &mut egui::Ui, rect: egui::Rect, track: &Track) {
             egui::pos2(bx + HEADER_BTN_SIZE / 2.0, ctrl_y + HEADER_BTN_SIZE / 2.0),
             egui::Vec2::splat(HEADER_BTN_SIZE),
         );
-        let m_resp = ui.interact(m_rect, ui.id().with(("mute", track.id)), egui::Sense::click());
+        let m_resp = ui.interact(m_rect, ui.id().with(("mute", &track.id)), egui::Sense::click());
         if m_resp.hovered() || track.muted {
             painter.rect_filled(m_rect, 2.0, if track.muted { theme::ACCENT_AMBER } else { theme::BG_HOVER });
         }
@@ -416,7 +416,7 @@ fn render_track_header(ui: &mut egui::Ui, rect: egui::Rect, track: &Track) {
             egui::pos2(bx + HEADER_BTN_SIZE / 2.0, ctrl_y + HEADER_BTN_SIZE / 2.0),
             egui::Vec2::splat(HEADER_BTN_SIZE),
         );
-        let s_resp = ui.interact(s_rect, ui.id().with(("solo", track.id)), egui::Sense::click());
+        let s_resp = ui.interact(s_rect, ui.id().with(("solo", &track.id)), egui::Sense::click());
         if s_resp.hovered() || track.solo {
             painter.rect_filled(s_rect, 2.0, if track.solo { theme::ACCENT_AMBER } else { theme::BG_HOVER });
         }
@@ -434,7 +434,7 @@ fn render_track_header(ui: &mut egui::Ui, rect: egui::Rect, track: &Track) {
             egui::pos2(bx + HEADER_BTN_SIZE / 2.0, ctrl_y + HEADER_BTN_SIZE / 2.0),
             egui::Vec2::splat(HEADER_BTN_SIZE),
         );
-        let mic_resp = ui.interact(mic_rect, ui.id().with(("mic", track.id)), egui::Sense::click());
+        let mic_resp = ui.interact(mic_rect, ui.id().with(("mic", &track.id)), egui::Sense::click());
         if mic_resp.hovered() {
             painter.rect_filled(mic_rect, 2.0, theme::BG_HOVER);
         }

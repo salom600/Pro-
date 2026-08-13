@@ -139,7 +139,10 @@ fn render_search_bar(ui: &mut egui::Ui, app: &mut ProApp) {
 
     let mut query = app.editor.read().media_search_query.clone();
     let focused = ui.ctx().memory(|m| m.has_focus(ui.id().with("search_field")));
-    let cursor_visible = focused && (ui.ctx().frame_count() / 30) % 2 == 0;
+    let cursor_visible = focused && ((std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() / 500) % 2 == 0);
 
     let display_text = if query.is_empty() && !focused {
         "Search".to_string()
