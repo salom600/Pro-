@@ -2,8 +2,7 @@
 //!
 //! When the `ffmpeg` feature is enabled, uses `ffmpeg-next` to open video
 //! files, seek to arbitrary timestamps, and decode individual frames as
-//! RGBA pixel buffers. The UI converts these to egui textures and paints
-//! them in the Source / Program monitors.
+//! RGBA pixel buffers. The Qt frontend converts these to QImage for display.
 //!
 //! When `ffmpeg` is not enabled, returns `None` and the UI shows a styled
 //! placeholder instead. This keeps the binary portable on platforms where
@@ -14,27 +13,12 @@ use parking_lot::Mutex;
 #[cfg(feature = "ffmpeg")]
 use std::collections::HashMap;
 
-/// A decoded video frame — RGBA pixel data ready for GPU upload.
+/// A decoded video frame — RGBA pixel data ready for display.
 #[derive(Clone)]
 pub struct VideoFrame {
     pub width: u32,
     pub height: u32,
     pub pixels: Vec<u8>, // RGBA8 (4 bytes per pixel)
-}
-
-impl VideoFrame {
-    /// Converts the raw RGBA bytes into an egui `ColorImage` for texture upload.
-    pub fn to_color_image(&self) -> egui::ColorImage {
-        let pixels: Vec<egui::Color32> = self
-            .pixels
-            .chunks_exact(4)
-            .map(|c| egui::Color32::from_rgba_unmultiplied(c[0], c[1], c[2], c[3]))
-            .collect();
-        egui::ColorImage {
-            size: [self.width as usize, self.height as usize],
-            pixels,
-        }
-    }
 }
 
 /// Information needed to request a frame from the playback engine.
