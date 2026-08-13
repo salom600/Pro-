@@ -342,10 +342,7 @@ impl ProApp {
 }
 
 fn render_export_dialog(ctx: &egui::Context, app: &mut ProApp) {
-    let mut open = app.editor.read().export_open;
-    if !open {
-        return;
-    }
+    let mut open = true;
 
     egui::Window::new("Export")
         .open(&mut open)
