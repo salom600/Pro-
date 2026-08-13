@@ -15,11 +15,18 @@ pub struct ExportPreset {
 }
 
 const PRESETS: &[(&str, &str, &str, &str, &str, &str, f64, f64)] = &[
-    ("youtube-1080p", "YouTube 1080p", "mp4", "h264", "aac", "1920x1080", 30.0, 12.0),
-    ("youtube-4k", "YouTube 4K", "mp4", "h265", "aac", "3840x2160", 30.0, 45.0),
+    ("web-480p", "Web 480p", "mp4", "h264", "aac", "854x480", 30.0, 2.0),
     ("web-720p", "Web 720p", "mp4", "h264", "aac", "1280x720", 30.0, 5.0),
-    ("social-1080p", "Social Media 1080p", "mp4", "h264", "aac", "1080x1080", 30.0, 10.0),
+    ("youtube-1080p", "YouTube 1080p", "mp4", "h264", "aac", "1920x1080", 30.0, 12.0),
+    ("youtube-1080p60", "YouTube 1080p 60fps", "mp4", "h264", "aac", "1920x1080", 60.0, 18.0),
+    ("social-1080p", "Social Square 1080p", "mp4", "h264", "aac", "1080x1080", 30.0, 10.0),
+    ("social-vertical", "Social Vertical 1080x1920", "mp4", "h264", "aac", "1080x1920", 30.0, 10.0),
+    ("youtube-4k", "4K UHD 2160p", "mp4", "h265", "aac", "3840x2160", 30.0, 45.0),
+    ("youtube-4k60", "4K UHD 60fps", "mp4", "h265", "aac", "3840x2160", 60.0, 68.0),
+    ("cinema-6k", "6K Cinema", "mov", "prores", "pcm_s16le", "6144x3160", 24.0, 180.0),
+    ("cinema-8k", "8K Cinema", "mov", "prores", "pcm_s16le", "7680x4320", 24.0, 280.0),
     ("prores-1080p", "ProRes 1080p (editing)", "mov", "prores", "pcm_s16le", "1920x1080", 30.0, 120.0),
+    ("prores-4k", "ProRes 4K (editing)", "mov", "prores", "pcm_s16le", "3840x2160", 30.0, 240.0),
 ];
 
 pub fn all() -> Vec<ExportPreset> {

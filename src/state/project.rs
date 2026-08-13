@@ -96,6 +96,60 @@ impl Project {
         self.tracks.iter_mut().find(|t| t.id == id)
     }
 
+    /// Adds a new video track (V3, V4, etc.)
+    pub fn add_video_track(&mut self) {
+        let n = self.tracks.iter().filter(|t| t.kind == super::track::TrackKind::Video).count() + 1;
+        let id = format!("v{}", n);
+        self.tracks.insert(0, Track::new(&id, super::track::TrackKind::Video, &format!("V{}", n)));
+        self.touch();
+    }
+
+    /// Adds a new audio track (A3, A4, etc.)
+    pub fn add_audio_track(&mut self) {
+        let n = self.tracks.iter().filter(|t| t.kind == super::track::TrackKind::Audio).count() + 1;
+        let id = format!("a{}", n);
+        self.tracks.push(Track::new(&id, super::track::TrackKind::Audio, &format!("A{}", n)));
+        self.touch();
+    }
+
+    /// Removes a track by ID.
+    pub fn remove_track(&mut self, id: &str) {
+        self.tracks.retain(|t| t.id != id);
+        self.touch();
+    }
+
+    /// Toggles track lock.
+    pub fn toggle_track_lock(&mut self, id: &str) {
+        if let Some(t) = self.find_track_mut(id) {
+            t.locked = !t.locked;
+        }
+        self.touch();
+    }
+
+    /// Toggles track mute.
+    pub fn toggle_track_mute(&mut self, id: &str) {
+        if let Some(t) = self.find_track_mut(id) {
+            t.muted = !t.muted;
+        }
+        self.touch();
+    }
+
+    /// Toggles track solo.
+    pub fn toggle_track_solo(&mut self, id: &str) {
+        if let Some(t) = self.find_track_mut(id) {
+            t.solo = !t.solo;
+        }
+        self.touch();
+    }
+
+    /// Toggles track visibility (eye).
+    pub fn toggle_track_visibility(&mut self, id: &str) {
+        if let Some(t) = self.find_track_mut(id) {
+            t.hidden = !t.hidden;
+        }
+        self.touch();
+    }
+
     pub fn timeline_duration(&self) -> f64 {
         self.tracks
             .iter()
