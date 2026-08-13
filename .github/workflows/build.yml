@@ -76,19 +76,36 @@ jobs:
           echo "LD_LIBRARY_PATH=${BREW_PREFIX}/lib:${LD_LIBRARY_PATH}" >> $GITHUB_ENV
           echo "BINDGEN_EXTRA_CLANG_ARGS=-I${BREW_PREFIX}/include -L${BREW_PREFIX}/lib" >> $GITHUB_ENV
 
-      - name: Install Windows dependencies (vcpkg)
+      - name: Set up MSVC Developer Environment
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Cache vcpkg FFmpeg
+        id: vcpkg-cache
         if: runner.os == 'Windows'
         uses: actions/cache@v4
         with:
-          path: C:\vcpkg\installed
-          key: vcpkg-ffmpeg-x64-windows-v4
+          path: |
+            C:\vcpkg\installed
+            C:\usr\include
+            D:\usr\include
+          key: vcpkg-ffmpeg-x64-windows-v5
 
       - name: Install FFmpeg (Windows)
+        if: runner.os == 'Windows' && steps.vcpkg-cache.outputs.cache-hit != 'true'
+        shell: pwsh
+        run: |
+          Write-Host "Installing FFmpeg via vcpkg (takes ~50 min on first run)..."
+          & C:\vcpkg\vcpkg install ffmpeg:x64-windows --x-install-root=C:\vcpkg\installed
+
+      - name: Configure FFmpeg paths (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          & C:\vcpkg\vcpkg install ffmpeg:x64-windows --x-install-root=C:\vcpkg\installed
           $FFMPEG_PREFIX = "C:\vcpkg\installed\x64-windows"
+          # Create /usr/include on both drives for ffmpeg-sys-next hardcoded path
           foreach ($drive in @("C:", "D:")) {
             $usrInclude = "$drive\usr\include"
             New-Item -ItemType Directory -Force -Path $usrInclude | Out-Null
@@ -100,7 +117,25 @@ jobs:
           echo "LIB=$FFMPEG_PREFIX\lib;$env:LIB" >> $env:GITHUB_ENV
           echo "INCLUDE=$FFMPEG_PREFIX\include;$env:INCLUDE" >> $env:GITHUB_ENV
           echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $env:GITHUB_ENV
-          echo "BINDGEN_EXTRA_CLANG_ARGS=-IC:\usr\include -ID:\usr\include -I$FFMPEG_PREFIX\include" >> $env:GITHUB_ENV
+          # Build BINDGEN_EXTRA_CLANG_ARGS with all include paths
+          $bindgenArgs = "-IC:\usr\include -ID:\usr\include -I$FFMPEG_PREFIX\include"
+          if ($env:INCLUDE) {
+            $env:INCLUDE -split ';' | ForEach-Object {
+              if ($_ -and (Test-Path $_)) { $bindgenArgs += " -I`"$_`"" }
+            }
+          }
+          $sdkBase = "C:\Program Files (x86)\Windows Kits\10\Include"
+          if (Test-Path $sdkBase) {
+            $sdkVer = Get-ChildItem $sdkBase -Directory | Sort-Object Name -Descending | Select-Object -First 1
+            if ($sdkVer) {
+              foreach ($sub in @("ucrt", "um", "shared")) {
+                $p = "$($sdkVer.FullName)\$sub"
+                if (Test-Path $p) { $bindgenArgs += " -I`"$p`"" }
+              }
+            }
+          }
+          echo "BINDGEN_EXTRA_CLANG_ARGS=$bindgenArgs" >> $env:GITHUB_ENV
+          Write-Host "BINDGEN_EXTRA_CLANG_ARGS: $bindgenArgs"
 
       - name: Build Rust library
         shell: bash
