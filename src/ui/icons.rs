@@ -290,7 +290,7 @@ pub fn color_wheel(p: &egui::Painter, r: egui::Rect, c: egui::Color32) {
         let a0 = i as f32 * (std::f32::consts::TAU / 36.0);
         let a1 = (i + 1) as f32 * (std::f32::consts::TAU / 36.0);
         let hue = i as f32 / 36.0;
-        let color = egui::Color32::from_hsv([hue, 1.0, 1.0]);
+        let color = egui::Color32::from(egui::ecolor::Hsva::new(hue, 1.0, 1.0, 1.0));
         let pts = vec![
             pos2(cx, cy),
             pos2(cx + a0.cos() * s, cy + a0.sin() * s),
