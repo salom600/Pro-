@@ -343,6 +343,7 @@ impl ProApp {
 
 fn render_export_dialog(ctx: &egui::Context, app: &mut ProApp) {
     let mut open = true;
+    let mut should_close = false;
 
     egui::Window::new("Export")
         .open(&mut open)
@@ -376,9 +377,11 @@ fn render_export_dialog(ctx: &egui::Context, app: &mut ProApp) {
 
             ui.add_space(8.0);
             if ui.button("Close").clicked() {
-                open = false;
+                should_close = true;
             }
         });
 
-    app.editor.write().export_open = open;
+    if should_close || !open {
+        app.editor.write().export_open = false;
+    }
 }
