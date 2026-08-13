@@ -1,16 +1,7 @@
-//! UI panels — every visible region of the editor.
+//! UI panels.
 
-pub mod about;
-pub mod effects;
-pub mod export_dialog;
-pub mod icons;
-pub mod inspector;
 pub mod media_bin;
-pub mod monitors;
-pub mod settings_dialog;
-pub mod statusbar;
+pub mod preview;
+pub mod properties;
 pub mod timeline;
-pub mod titlebar;
-pub mod tool_strip;
-pub mod toolbar;
-pub mod transport_bar;
+pub mod top_bar;

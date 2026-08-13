@@ -1,89 +1,38 @@
 use serde::{Deserialize, Serialize};
 
-/// Timeline-focused state — what the editor is currently doing.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TimelineState {
-    pub playhead: f64,
-    pub is_playing: bool,
-    pub zoom: f64,
-    pub thumbnail_size: f32,
-    pub snap_enabled: bool,
-}
-
-impl Default for TimelineState {
-    fn default() -> Self {
-        Self {
-            playhead: 0.0,
-            is_playing: false,
-            zoom: 50.0,
-            thumbnail_size: 120.0,
-            snap_enabled: true,
-        }
-    }
-}
-
 /// Editor UI state.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EditorState {
     pub active_tool: Tool,
     pub selected_clip_id: Option<String>,
     pub source_media_id: Option<String>,
-    pub timeline: TimelineState,
+    pub playhead: f64,
+    pub is_playing: bool,
+    pub zoom: f64,
     pub show_media_bin: bool,
-    pub show_inspector: bool,
-    pub show_effects: bool,
-    pub export_dialog_open: bool,
-    pub about_open: bool,
+    pub show_properties: bool,
+    pub export_open: bool,
     pub settings_open: bool,
-    pub media_search_query: String,
-    pub media_view_mode: MediaViewMode,
-    pub active_media_tab: MediaTab,
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum MediaViewMode {
-    #[default]
-    Grid,
-    List,
-}
-
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum MediaTab {
-    #[default]
-    Project,
-    Browser,
-    Prints,
-    Offices,
-}
-
-impl EditorState {
-    pub fn toggle_play(&mut self) {
-        self.timeline.is_playing = !self.timeline.is_playing;
-    }
-
-    pub fn set_playhead(&mut self, t: f64) {
-        self.timeline.playhead = t.max(0.0);
-    }
-
-    pub fn skip(&mut self, delta: f64) {
-        self.set_playhead(self.timeline.playhead + delta);
-    }
-
-    pub fn skip_frame(&mut self, fps: f64, forward: bool) {
-        let frame = 1.0 / fps.max(1.0);
-        self.set_playhead(self.timeline.playhead + if forward { frame } else { -frame });
-    }
-
-    pub fn set_zoom(&mut self, z: f64) {
-        self.timeline.zoom = z.clamp(5.0, 500.0);
-    }
-
-    pub fn set_thumbnail_size(&mut self, s: f32) {
-        self.timeline.thumbnail_size = s.clamp(60.0, 200.0);
+impl Default for EditorState {
+    fn default() -> Self {
+        Self {
+            active_tool: Tool::default(),
+            selected_clip_id: None,
+            source_media_id: None,
+            playhead: 0.0,
+            is_playing: false,
+            zoom: 50.0,
+            show_media_bin: true,
+            show_properties: true,
+            export_open: false,
+            settings_open: false,
+        }
     }
 }
 
-/// Full professional tool set matching Premiere Pro / DaVinci Resolve.
+/// Tools — matches standard NLE shortcuts.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Tool {
@@ -161,14 +110,4 @@ impl Tool {
             Tool::Type,
         ]
     }
-}
-
-/// Track header controls state (mute/solo/lock/visibility).
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct TrackHeaderState {
-    pub locked: bool,
-    pub muted: bool,
-    pub solo: bool,
-    pub hidden: bool,
-    pub target_sync: bool,
 }
