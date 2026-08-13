@@ -510,13 +510,32 @@ fn render_bottom_toolbar(ui: &mut egui::Ui, app: &mut ProApp) {
 
     // ── Left: import, sort, filter ──
     let (x2, r) = icon_button_h(ui, x, cy, "import", |p, r| icons::plus(p, r, theme::TEXT_SECONDARY));
+    if r.clicked() {
+        // Actually open the file dialog!
+        if let Some(paths) = rfd::FileDialog::new()
+            .add_filter(
+                "Media",
+                &["mp4", "mov", "mkv", "avi", "webm", "m4v", "mp3", "wav", "aac", "flac", "ogg", "m4a", "png", "jpg", "jpeg", "bmp", "webp", "gif"],
+            )
+            .pick_files()
+        {
+            for p in paths {
+                app.import_media(p.to_string_lossy().to_string());
+                // Generate thumbnail for the last imported asset
+                let media_id = app.project.read().media_assets.last().map(|a| a.id.clone());
+                if let Some(id) = media_id {
+                    app.generate_thumbnail(&id);
+                }
+            }
+        }
+    }
     r.on_hover_text("Import media");
     x = x2 + 4.0;
     let (x2, r) = icon_button_h(ui, x, cy, "sort", |p, r| icons::sort(p, r, theme::TEXT_SECONDARY));
-    r.on_hover_text("Sort");
+    r.on_hover_text("Sort by name");
     x = x2 + 4.0;
     let (x2, r) = icon_button_h(ui, x, cy, "filter", |p, r| icons::filter(p, r, theme::TEXT_SECONDARY));
-    r.on_hover_text("Filter");
+    r.on_hover_text("Filter by type");
     x = x2;
 
     // ── Center: zoom slider ──
