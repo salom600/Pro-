@@ -183,7 +183,8 @@ jobs:
           Get-ChildItem "$FFMPEG_PREFIX\bin\*.dll" | ForEach-Object { Write-Host "  $($_.Name)" }
 
       # ── Build ───────────────────────────────────────────────────────────
-      - name: Build (release)
+      - name: Build (release) — Unix
+        if: runner.os != 'Windows'
         shell: bash
         run: |
           FEATURES="${{ matrix.features }}"
@@ -192,6 +193,17 @@ jobs:
           else
             cargo build --release --target ${{ matrix.target }}
           fi
+
+      - name: Build (release) — Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $FEATURES = "${{ matrix.features }}"
+          if ($FEATURES) {
+            cargo build --release --target ${{ matrix.target }} --features $FEATURES
+          } else {
+            cargo build --release --target ${{ matrix.target }}
+          }
 
       # ── Package ─────────────────────────────────────────────────────────
       - name: Package binary (Unix)
