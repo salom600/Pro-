@@ -199,28 +199,33 @@ impl ProApp {
 impl ProApp {
     fn render_ui(&mut self, ctx: &egui::Context) {
         ui::titlebar::render(ctx, self);
-        ui::toolbar::render(ctx, self);
+
+        // Transport bar (timecode + nav controls) — above the timeline
+        ui::transport_bar::render(ctx, self);
 
         egui::TopBottomPanel::bottom("statusbar")
-            .exact_height(26.0)
+            .exact_height(24.0)
             .show(ctx, |ui| {
                 ui::statusbar::render(ui, self);
             });
 
-        // Left panel — media bin
+        // ── Left: vertical tool strip ──
+        ui::tool_strip::render(ctx, self);
+
+        // ── Left panel: media bin ──
         let show_bin = self.editor.read().show_media_bin;
         if show_bin {
             egui::SidePanel::left("media_bin_panel")
-                .default_width(260.0)
-                .min_width(200.0)
-                .max_width(400.0)
+                .default_width(280.0)
+                .min_width(220.0)
+                .max_width(420.0)
                 .resizable(true)
                 .show(ctx, |ui| {
                     ui::media_bin::render(ui, self);
                 });
         }
 
-        // Right panel — inspector + effects (resizable split)
+        // ── Right panel: inspector + effects ──
         let show_right = self.editor.read().show_inspector || self.editor.read().show_effects;
         if show_right {
             egui::SidePanel::right("right_panel")
@@ -250,12 +255,12 @@ impl ProApp {
                 });
         }
 
-        // Center — monitors (top, resizable) + timeline (bottom)
+        // ── Center: monitors (top) + timeline (bottom, resizable) ──
         egui::TopBottomPanel::top("monitors_panel")
             .resizable(true)
-            .default_height(340.0)
-            .min_height(200.0)
-            .max_height(600.0)
+            .default_height(280.0)
+            .min_height(160.0)
+            .max_height(500.0)
             .show(ctx, |ui| {
                 ui.painter()
                     .rect_filled(ui.max_rect(), 0.0, crate::theme::BG_DEEPEST);
@@ -285,23 +290,19 @@ impl ProApp {
             return;
         }
 
-        let (tool_change, toggle_play, skip_left, skip_right, split_now, delete_selected) =
+        let (tool_change, toggle_play, skip_left, skip_right, split_now, delete_selected, go_start, go_end) =
             ctx.input(|i| {
                 let ctrl = i.modifiers.ctrl || i.modifiers.command;
                 let tool = if !ctrl {
-                    if i.key_pressed(egui::Key::V) {
-                        Some(Tool::Select)
-                    } else if i.key_pressed(egui::Key::C) {
-                        Some(Tool::Razor)
-                    } else if i.key_pressed(egui::Key::Y) {
-                        Some(Tool::Slip)
-                    } else if i.key_pressed(egui::Key::B) {
-                        Some(Tool::Ripple)
-                    } else if i.key_pressed(egui::Key::H) {
-                        Some(Tool::Hand)
-                    } else {
+                    let key_str = i.events.iter().find_map(|e| {
+                        if let egui::Event::Text(t) = e {
+                            if t.len() == 1 {
+                                return Some(t.clone());
+                            }
+                        }
                         None
-                    }
+                    });
+                    key_str.and_then(|s| Tool::from_key(&s))
                 } else {
                     None
                 };
@@ -312,6 +313,8 @@ impl ProApp {
                     i.key_pressed(egui::Key::ArrowRight),
                     !ctrl && i.key_pressed(egui::Key::S),
                     i.key_pressed(egui::Key::Delete) || i.key_pressed(egui::Key::Backspace),
+                    i.key_pressed(egui::Key::Home),
+                    i.key_pressed(egui::Key::End),
                 )
             });
 
@@ -326,6 +329,13 @@ impl ProApp {
         }
         if skip_right {
             self.editor.write().skip(1.0);
+        }
+        if go_start {
+            self.editor.write().set_playhead(0.0);
+        }
+        if go_end {
+            let dur = self.project.read().timeline_duration();
+            self.editor.write().set_playhead(dur);
         }
         if split_now {
             let playhead = self.editor.read().timeline.playhead;

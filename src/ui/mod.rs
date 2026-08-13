@@ -10,4 +10,6 @@ pub mod monitors;
 pub mod statusbar;
 pub mod timeline;
 pub mod titlebar;
+pub mod tool_strip;
 pub mod toolbar;
+pub mod transport_bar;
